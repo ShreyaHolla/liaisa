@@ -9,6 +9,8 @@ try {
   process.exit(1);
 }
 
+for (const w of config.warnings) console.warn(`WARNING: ${w}`);
+
 createApp(config).listen(config.port, () => {
   console.log(`Liaisa listening on port ${config.port} (${config.env})`);
 });
