@@ -507,12 +507,13 @@ CREATE TABLE ai_calls (
 | `BASE_URL` | `https://<domain>` |
 | `DATABASE_URL` or `DB_HOST`/`DB_USER`/`DB_PASSWORD`/`DB_NAME` | GoDaddy MySQL |
 | `ANTHROPIC_API_KEY` | Testing key or finale key (separate workspaces) |
-| `AI_ENABLED` | `true` / `false` |
+| `AI_ENABLED` | `true` / `false`. `ANTHROPIC_API_KEY` is required at startup only when `AI_ENABLED=true` and `AI_MODE=live` |
 | `AI_MODE` | `live` / `mock` (default `mock` in dev and tests) |
 | `AI_MODEL_INTAKE` / `AI_MODEL_RATECARD` | `claude-haiku-5-5` |
 | `AI_DAILY_REQUEST_CAP` | `200` |
 | `AI_PRICE_INPUT_PER_MTOK` / `AI_PRICE_OUTPUT_PER_MTOK` | For cost logging; verify current prices |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | From the GoDaddy mailbox settings `[ verify host and port for our mailbox type ]` |
+| `MAIL_ENABLED` | `false` until the mailbox exists. When `true`, `SMTP_HOST`, `SMTP_USER` and `SMTP_PASS` are required at startup |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Titan: host `smtp.titan.email` (fallback `smtpout.secureserver.net`), port 465, user = full email address |
 | `MAIL_FROM` | `"Mehfil Kitchen" <hello@<domain>>` |
 | `OWNER_EMAIL` | Where owner notices and contact messages go |
 | `WHATSAPP_DEFAULT_COUNTRY_CODE` | `91` (used to normalise local phone numbers) |

@@ -208,5 +208,5 @@ Update after every milestone, real test run and purchase.
 
 | Date | Builder | What | Model | Claude spend | GoDaddy spend | Claude total | GoDaddy total |
 |---|---|---|---|---|---|---|---|
-| | | Start | – | $0 | $0 | $0 | $0 |
-| | | | | | | | |
+| | | Domain | – | $0 | $5.34 | $0 | $5.34 |
+| | | M1 | Sonnet & Haiku | $0.2638 | $0 | $0.2638 | $5.34 |

@@ -56,7 +56,7 @@ Calendar for reference: 12 Dec 2026 = Saturday · 13 Dec = Sunday · 15 Dec = Tu
 | TC-REQ-04 | M | — | Must | R3 | Send an email from an outside account (e.g. Gmail) to `hello@liaisa.co.in` | Arrives in the Titan mailbox |
 | TC-REQ-05 | M | — | Must | R4 | Submit the contact form on the live site | Email arrives in `hello@liaisa.co.in` within a minute |
 | TC-REQ-06 | M | — | Must | R5 | Run `git grep -nIE "(sk-ant|SMTP_PASS=.+|DB_PASSWORD=.+|password\s*[:=]\s*['\"][^'\"]+)"` and check git history (`git log -p \| grep -i "sk-ant"`) | No secrets found |
-| TC-REQ-07 | U | Mock | Must | R5 | Start the app with `ANTHROPIC_API_KEY` or `SMTP_PASS` missing in production mode | App refuses to start with a clear message naming the missing variable (not its value) |
+| TC-REQ-07 | U | Mock | Must | R5 | In production mode: (a) `AI_ENABLED=true`, `AI_MODE=live`, no `ANTHROPIC_API_KEY`; (b) `MAIL_ENABLED=true`, no `SMTP_PASS`; (c) both features off, no secrets | (a), (b): app refuses to start, naming the missing variable (not its value). (c): app starts and logs one warning per disabled feature |
 | TC-REQ-08 | M | — | Must | R5 | `git check-ignore -v .env` | Prints the `.gitignore` rule matching `.env` |
 
 ### 3.2 F2 — Contact form — M3
