@@ -30,13 +30,14 @@ Don't read all four in full every session. Open the section relevant to the curr
 - **Ask before** anything that costs money or is hard to undo: GoDaddy purchases, DNS changes, deploys to `liaisa.co.in`, deleting data, force-pushing, sending real email to anyone except our own test addresses.
 
 ## Stack
-Node.js (LTS) + Express, EJS views, MySQL (`mysql2`, SQL migrations), zod, `@anthropic-ai/sdk`, nodemailer (Titan mailbox via SMTP), helmet, express-rate-limit. Hosting: GoDaddy Node.js Hosting (Economy), deployed as a zip with the `gddy` CLI. Domain: `liaisa.co.in`. Mailbox: `hello@liaisa.co.in`.
+Node.js (LTS; **use no features newer than Node 20**, host version unverified) + Express, EJS views, MySQL (`mysql2`, SQL migrations), zod, `@anthropic-ai/sdk`, nodemailer (Titan mailbox via SMTP), helmet, express-rate-limit. Hosting: GoDaddy Node.js Hosting (Economy), deployed as a zip with the `gddy` CLI. Domain: `liaisa.co.in`. Mailbox: `hello@liaisa.co.in`.
 
 SMTP: username is the full email address. If login is rejected at `smtp.titan.email`, use `smtpout.secureserver.net`.
 
 ## Commands (fill in as they're created)
-- `npm run dev` — local server, mock AI
-- `npm test` — unit + integration tests (mock AI, no cost)
+- `npm run dev` — local server, mock AI (`node --watch`)
+- `npm start` — run `node src/server.js` (what the host runs)
+- `npm test` — unit + integration tests (mock AI, no cost); runner is `scripts/test.js` (node:test, Node 20-safe)
 - `npm run eval` — 10 real cases with live Claude (**costs credits; only after a prompt or model change**)
 - `npm run migrate` / `npm run seed`
 - `npm run package` — build `liaisa-<sha>.zip` for deploy (no `.env`, tests or docs)
