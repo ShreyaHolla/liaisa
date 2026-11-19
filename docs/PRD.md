@@ -422,7 +422,7 @@ CREATE TABLE contact_messages (
   name VARCHAR(120) NOT NULL,
   email VARCHAR(200) NOT NULL,
   message TEXT NOT NULL,
-  email_status ENUM('accepted','failed') NOT NULL,
+  email_status ENUM('accepted','failed','skipped') NOT NULL,   -- skipped = MAIL_ENABLED=false
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
