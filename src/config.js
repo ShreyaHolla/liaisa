@@ -21,6 +21,8 @@ const schema = z
     SMTP_PORT: withDefault(z.coerce.number().int().min(1).max(65535), 465),
     SMTP_USER: opt(z.string()),
     SMTP_PASS: opt(z.string()),
+    OWNER_EMAIL: opt(z.string().email()),
+    MAIL_FROM: withDefault(z.string(), '"Liaisa" <hello@liaisa.co.in>'),
   })
   .superRefine((env, ctx) => {
     const need = (names) => {
@@ -32,7 +34,7 @@ const schema = z
     };
     // A secret is required only when the feature that uses it is switched on.
     if (env.AI_ENABLED && env.AI_MODE === 'live') need(['ANTHROPIC_API_KEY']);
-    if (env.MAIL_ENABLED) need(['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS']);
+    if (env.MAIL_ENABLED) need(['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'OWNER_EMAIL']);
   });
 
 /**
@@ -66,6 +68,8 @@ export function loadConfig(env = process.env) {
     aiLive,
     anthropicApiKey: e.ANTHROPIC_API_KEY,
     mailEnabled: e.MAIL_ENABLED,
+    ownerEmail: e.OWNER_EMAIL,
+    mailFrom: e.MAIL_FROM,
     smtp: { host: e.SMTP_HOST, port: e.SMTP_PORT, user: e.SMTP_USER, pass: e.SMTP_PASS },
     warnings,
   };

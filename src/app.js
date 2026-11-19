@@ -3,10 +3,14 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import helmet from 'helmet';
 import { publicRoutes } from './routes/public.js';
+import { contactRoutes } from './routes/contact.js';
+import { errorHandler } from './middleware/errors.js';
+import { buildDeps } from './container.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-export function createApp(config) {
+/** `deps` ({ store, mailer }) lets tests inject a fake mailer; default wires by env. */
+export function createApp(config, deps = buildDeps(config)) {
   const app = express();
   app.set('trust proxy', 1);
   app.set('view engine', 'ejs');
@@ -15,10 +19,13 @@ export function createApp(config) {
 
   app.use(helmet());
   app.use('/css', express.static(path.join(here, 'public', 'css')));
+  app.use('/js', express.static(path.join(here, 'public', 'js')));
   app.use(publicRoutes(config));
+  app.use(contactRoutes({ ...deps, config }));
 
   app.use((req, res) => {
     res.status(404).type('text/plain').send('Not found');
   });
+  app.use(errorHandler);
   return app;
 }

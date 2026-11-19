@@ -34,6 +34,14 @@ test('TC-REQ-07 production with mail enabled but no SMTP_HOST/SMTP_USER names th
   throwsNaming({ ...prod, MAIL_ENABLED: 'true', SMTP_PASS: SECRET_S }, 'SMTP_USER', SECRET_S);
 });
 
+test('TC-REQ-07 production with mail enabled but no OWNER_EMAIL names it', () => {
+  throwsNaming(
+    { ...prod, MAIL_ENABLED: 'true', SMTP_HOST: 'h', SMTP_USER: 'u', SMTP_PASS: SECRET_S },
+    'OWNER_EMAIL',
+    SECRET_S,
+  );
+});
+
 test('TC-REQ-07 production with features off starts without any secret and warns once, naming features', () => {
   const cfg = loadConfig(prod);
   assert.equal(cfg.aiMode, 'mock');
@@ -57,6 +65,7 @@ test('TC-REQ-07 production with enabled features and their secrets starts with n
     SMTP_HOST: 'smtp.example.test',
     SMTP_USER: 'hello@example.test',
     SMTP_PASS: SECRET_S,
+    OWNER_EMAIL: 'owner@example.test',
   });
   assert.equal(cfg.aiLive, true);
   assert.equal(cfg.mailEnabled, true);

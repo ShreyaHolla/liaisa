@@ -8,8 +8,42 @@
 </head>
 <body>
   <main>
-    <p class="brand">Liaisa</p>
+    <header class="top">
+      <p class="brand">Liaisa</p>
+      <a href="#contact">Contact</a>
+    </header>
     <h1>Every enquiry answered.<br>Every quote yours to approve.</h1>
+
+    <section id="contact" class="contact" aria-labelledby="contact-title">
+      <h2 id="contact-title">Contact</h2>
+      <% if (contactNotice) { %>
+        <p class="notice notice-<%= contactNotice.tone %>" role="<%= contactNotice.tone === 'ok' ? 'status' : 'alert' %>"><%= contactNotice.text %></p>
+      <% } %>
+      <p id="contact-status" class="notice" hidden></p>
+      <form id="contact-form" method="post" action="/api/contact" novalidate>
+        <div class="field">
+          <label for="name">Your name</label>
+          <input id="name" name="name" type="text" autocomplete="name" maxlength="120" required>
+          <p class="field-error" id="error-name" hidden></p>
+        </div>
+        <div class="field">
+          <label for="email">Your email</label>
+          <input id="email" name="email" type="email" autocomplete="email" maxlength="200" required>
+          <p class="field-error" id="error-email" hidden></p>
+        </div>
+        <div class="field">
+          <label for="message">Message</label>
+          <textarea id="message" name="message" rows="5" maxlength="2000" required></textarea>
+          <p class="field-error" id="error-message" hidden></p>
+        </div>
+        <div class="hp" aria-hidden="true">
+          <label for="website">Leave this field empty</label>
+          <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+        </div>
+        <button type="submit" class="btn">Send message</button>
+      </form>
+    </section>
   </main>
+  <script src="/js/contact.js" defer></script>
 </body>
 </html>
