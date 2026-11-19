@@ -1,0 +1,936 @@
+openapi: 3.1.0
+info:
+  title: Liaisa HTTP API
+  version: 1.0.0
+  summary: Enquiry agent, quotes, contact form, owner actions and Client Finder.
+  description: |
+    Contract for every Liaisa endpoint that accepts input. Build routes, zod schemas and
+    integration tests from this file. Feature IDs (F2, F4 …) and test IDs (TC-…) refer to
+    docs/PRD.md and docs/TestCases.md.
+
+    ## Content negotiation (applies to every POST here)
+    Pages work **without JavaScript**: HTML forms post `application/x-www-form-urlencoded`
+    and get an HTML page or a 302 redirect back. The small vanilla JS layer sends the same
+    fields as `application/json` with `Accept: application/json` and gets the JSON
+    responses documented below. One handler serves both:
+    - Request body: accept either content type; validate with the same zod schema.
+    - Response: if `Accept` includes `application/json` → JSON as documented; otherwise render
+      the page (or redirect) with the same data.
+    Arrays in form posts use repeated keys (`addon_ids=dessert&addon_ids=staff`).
+
+    ## Errors
+    All JSON errors use the `Error` schema. HTTP status ↔ `error.code`:
+    400 `validation_error` · 401 `unauthenticated` · 403 `csrf_failed` · 404 `not_found` ·
+    409 `conflict` · 410 `quote_expired` · 429 `rate_limited` · 500 `server_error`.
+    Messages are the user-facing words from docs/DESIGN.md §7.3. Never include stack
+    traces, SQL or secrets.
+
+    ## Auth (owner routes)
+    Session cookie `liaisa.sid` (HttpOnly, Secure in production, SameSite=Lax) set by
+    `POST /owner/login`. Every owner POST also needs the CSRF token: form field `_csrf`
+    or header `X-CSRF-Token`. Missing session → 302 to /owner/login (HTML) or 401 (JSON).
+
+    ## Rate limits
+    Per IP, return 429 with `Retry-After` (seconds): enquiry start 3/hour, enquiry reply
+    10/hour, contact 5/hour, owner login 5/15 min. Global AI caps never return 429 to
+    customers; they switch the response to `fallback`.
+servers:
+  - url: https://liaisa.co.in
+    description: Production (GoDaddy Node.js Hosting)
+  - url: http://localhost:3000
+    description: Local development (AI_MODE=mock)
+
+tags:
+  - name: system
+  - name: contact
+    description: F2 contact form
+  - name: enquiries
+    description: F4 agent, F10 fallback
+  - name: quotes
+    description: F7 customer quote page actions
+  - name: owner
+    description: F6, F7, F8, F9, F12 owner actions (session + CSRF)
+  - name: client-finder
+    description: F13 Client Finder (session + CSRF)
+
+paths:
+  /healthz:
+    get:
+      tags: [system]
+      summary: Health check (TC-REQ-01, TC-SEC-07)
+      responses:
+        '200':
+          description: App up. `db` false means MySQL is unreachable (still 200 so the host doesn't restart-loop).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, db, version]
+                properties:
+                  ok: { type: boolean, const: true }
+                  db: { type: boolean }
+                  version: { type: string, description: 'package.json version only', examples: ['1.0.0'] }
+
+  /api/contact:
+    post:
+      tags: [contact]
+      summary: Send a contact-form message to the business mailbox (F2)
+      description: |
+        Saves to contact_messages, then emails OWNER_EMAIL with Reply-To = visitor.
+        A failed send still returns 200 (message saved with email_status=failed, shown on dashboard).
+        Honeypot filled → return 200 `{ok:true}` but save and send nothing (TC-CON-03).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContactRequest' }
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/ContactRequest' }
+      responses:
+        '200':
+          description: Received
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /api/enquiries:
+    post:
+      tags: [enquiries]
+      summary: Start an enquiry and run the first agent turn (F4)
+      description: |
+        Creates the enquiry (status `collecting`, source `ai`, optional source_brief_id),
+        then runs one agent turn (max 4 Claude requests per enquiry in total).
+        Customer contact details are stored but NEVER sent to Claude (TC-AGT-11).
+        The response NEVER contains a price (F4).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EnquiryStartRequest' }
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/EnquiryStartRequest' }
+      responses:
+        '201':
+          description: Enquiry created; outcome of the first turn
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentTurnResponse' }
+              examples:
+                needsInfo:
+                  value:
+                    publicId: 01JD3Z8K7M2X9Q4R6T8V0W2Y4A
+                    outcome: needs_info
+                    question: Lovely! Which date is it, and which area?
+                ready:
+                  value:
+                    publicId: 01JD3Z8K7M2X9Q4R6T8V0W2Y4A
+                    outcome: ready
+                    understood:
+                      serviceName: Veg buffet
+                      quantity: 40
+                      eventDate: '2026-12-13'
+                      location: Koramangala
+                      addonNames: []
+                    replyChannel: whatsapp
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /api/enquiries/{publicId}/reply:
+    post:
+      tags: [enquiries]
+      summary: Customer answers Liaisa's question; runs the next agent turn (F4)
+      description: Only valid while status is `collecting`. Resumes from enquiries.ai_state.
+      parameters:
+        - $ref: '#/components/parameters/PublicId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EnquiryReplyRequest' }
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/EnquiryReplyRequest' }
+      responses:
+        '200':
+          description: Outcome of this turn
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentTurnResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /api/enquiries/{publicId}/form:
+    post:
+      tags: [enquiries]
+      summary: Structured fallback form (F10)
+      description: |
+        Sets source=`form`, status `needs_owner`. If all required fields are present the server
+        calculates a draft estimate and moves the enquiry to `awaiting_approval` (TC-FBK-02).
+      parameters:
+        - $ref: '#/components/parameters/PublicId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Requirements' }
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/Requirements' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [publicId, outcome]
+                properties:
+                  publicId: { type: string }
+                  outcome: { type: string, enum: [ready, needs_owner] }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /q/{token}/accept:
+    post:
+      tags: [quotes]
+      summary: Customer accepts the quote (F7)
+      description: Enquiry → `won`; pending follow-ups cancelled; owner notified. Idempotent.
+      parameters:
+        - $ref: '#/components/parameters/QuoteToken'
+      responses:
+        '200':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuoteActionResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '410': { $ref: '#/components/responses/QuoteExpired' }
+
+  /q/{token}/question:
+    post:
+      tags: [quotes]
+      summary: Customer asks a question about the quote (F7)
+      description: Saved to customer_responses; owner notified; follow-ups paused.
+      parameters:
+        - $ref: '#/components/parameters/QuoteToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QuoteQuestionRequest' }
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/QuoteQuestionRequest' }
+      responses:
+        '200':
+          description: Question sent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuoteActionResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410': { $ref: '#/components/responses/QuoteExpired' }
+
+  /q/{token}/decline:
+    post:
+      tags: [quotes]
+      summary: Customer declines the quote (F7)
+      description: Enquiry → `lost`; follow-ups cancelled.
+      parameters:
+        - $ref: '#/components/parameters/QuoteToken'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, maxLength: 500 }
+      responses:
+        '200':
+          description: Declined
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuoteActionResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /owner/login:
+    post:
+      tags: [owner]
+      summary: Owner login (F9)
+      description: Compares with OWNER_PASSWORD_HASH (bcrypt). Rotates session ID on success.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        '302': { description: 'Success → /owner (sets liaisa.sid)' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /owner/api/summary:
+    get:
+      tags: [owner]
+      summary: Dashboard data, polled every 30 s (F9)
+      description: Also triggers the idempotent follow-up runner (ARCHITECTURE §5.3).
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200':
+          description: What needs the owner now, plus weekly counts
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardSummary' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /owner/enquiries/{id}/approve:
+    post:
+      tags: [owner]
+      summary: Approve the current draft quote and send it (F6, F7)
+      description: |
+        One DB transaction: estimate → `approved`, quote_token, valid_until (+7 days), follow-ups scheduled.
+        After commit: channel email → send email (estimate `sent` or `approved_send_failed`);
+        channel whatsapp → respond with the wa.me URL for the owner to open (nothing is sent by the server).
+        Idempotent: approving an already-approved estimate returns the same result (TC-APR-05).
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/EnquiryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [estimateVersion]
+              properties:
+                estimateVersion: { type: integer, minimum: 1, description: 'Guards against approving a stale draft → 409' }
+      responses:
+        '200':
+          description: Approved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApproveResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /owner/enquiries/{id}/edit:
+    post:
+      tags: [owner]
+      summary: Create a revised draft quote (F6)
+      description: New estimate version priced by the pricing engine; previous draft → `superseded`.
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/EnquiryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EstimateEditRequest' }
+      responses:
+        '200':
+          description: New draft
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /owner/enquiries/{id}/decline:
+    post:
+      tags: [owner]
+      summary: Owner declines the enquiry (F6)
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/EnquiryId'
+      responses:
+        '200':
+          description: Declined
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /owner/enquiries/{id}/retry-send:
+    post:
+      tags: [owner]
+      summary: Retry a failed quote email (F7, TC-EML-03)
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/EnquiryId'
+      responses:
+        '200':
+          description: Result of the retry
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [estimateStatus]
+                properties:
+                  estimateStatus: { type: string, enum: [sent, approved_send_failed] }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /owner/enquiries/{id}/whatsapp:
+    post:
+      tags: [owner]
+      summary: Log a WhatsApp share of the approved quote and get the wa.me link (F12)
+      description: |
+        Only for approved estimates (409 otherwise). Inserts whatsapp_shares, marks estimate `sent`.
+        HTML clients get a 302 to the wa.me URL; JSON clients get the URL to open.
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/EnquiryId'
+      responses:
+        '200':
+          description: Link to open
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WhatsAppLink' }
+        '302': { description: 'Redirect to https://wa.me/<E.164 digits>?text=<url-encoded message>' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /owner/followups/{id}/whatsapp:
+    post:
+      tags: [owner]
+      summary: Send a due WhatsApp reminder via wa.me (F8, F12)
+      description: Follow-up must be `awaiting_owner` (409 otherwise). Marks it `sent`, logs whatsapp_shares.
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Link to open
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WhatsAppLink' }
+        '302': { description: Redirect to the wa.me URL }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /owner/followups/run:
+    post:
+      tags: [owner]
+      summary: Run due follow-ups now (F8; demo and sleeping-host fallback)
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      responses:
+        '200':
+          description: Runner result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [emailed, awaitingOwner, cancelled, failed]
+                properties:
+                  emailed: { type: integer }
+                  awaitingOwner: { type: integer }
+                  cancelled: { type: integer }
+                  failed: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+
+  /owner/client-finder/plan:
+    post:
+      tags: [client-finder]
+      summary: Generate client groups from the owner's ideal-client description (F13)
+      description: One Claude request (+1 retry on invalid output). Rejects segments containing names, emails or phone numbers (TC-CF-02). Daily cap CLIENT_FINDER_DAILY_CAP.
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idealClient]
+              properties:
+                idealClient: { type: string, minLength: 20, maxLength: 1500 }
+      responses:
+        '201':
+          description: Plan created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientPlan' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /owner/client-finder/briefs:
+    post:
+      tags: [client-finder]
+      summary: Write a draft brief for one client group (F13)
+      description: One Claude request (+1 retry). Package prices computed by the pricing engine, never by Claude (TC-CF-03).
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [planId, segmentId]
+              properties:
+                planId: { type: integer, minimum: 1 }
+                segmentId: { type: string, pattern: '^[a-z0-9-]{2,60}$' }
+      responses:
+        '201':
+          description: Draft brief
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Brief' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /owner/briefs/{id}/edit:
+    post:
+      tags: [client-finder]
+      summary: Edit a draft brief's text (F13)
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/BriefId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BriefContent' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Brief' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /owner/briefs/{id}/publish:
+    post:
+      tags: [client-finder]
+      summary: Publish a brief at /for/{slug} (F13)
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/BriefId'
+      responses:
+        '200':
+          description: Published
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Brief' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /owner/briefs/{id}/archive:
+    post:
+      tags: [client-finder]
+      summary: Unpublish a brief (F13); /for/{slug} then returns 404
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/BriefId'
+      responses:
+        '200':
+          description: Archived
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Brief' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+
+  /owner/briefs/{id}/outreach:
+    post:
+      tags: [client-finder]
+      summary: Share a published brief with ONE recipient (F13)
+      description: |
+        Logs outreach_log and returns a prefilled mailto: or wa.me link. The owner sends it from
+        their own app. There is deliberately no endpoint that accepts a list (TC-CF-09).
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/BriefId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel, recipient]
+              properties:
+                channel: { type: string, enum: [email, whatsapp] }
+                recipient:
+                  type: string
+                  maxLength: 200
+                  description: One email address (channel=email) or one phone number (channel=whatsapp)
+                recipientLabel: { type: string, maxLength: 120, description: 'Optional note, e.g. a name' }
+      responses:
+        '200':
+          description: Link to open
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url]
+                properties:
+                  url: { type: string, description: 'mailto:… or https://wa.me/…' }
+        '302': { description: Redirect to the link (HTML clients) }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: liaisa.sid
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Or form field `_csrf` for HTML form posts.
+
+  parameters:
+    PublicId:
+      name: publicId
+      in: path
+      required: true
+      description: ULID from enquiries.public_id
+      schema: { type: string, pattern: '^[0-9A-HJKMNP-TV-Z]{26}$' }
+    QuoteToken:
+      name: token
+      in: path
+      required: true
+      description: 32 random bytes, base64url (43 chars). Unknown, superseded or never-issued → 404.
+      schema: { type: string, pattern: '^[A-Za-z0-9_-]{43}$' }
+    EnquiryId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    BriefId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+
+  responses:
+    ValidationError:
+      description: Invalid input
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error:
+              code: validation_error
+              message: Please check the highlighted fields.
+              fields:
+                phone: Enter a 10-digit mobile number, like 98450 12345.
+    Unauthenticated:
+      description: No valid owner session
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    CsrfFailed:
+      description: Missing or wrong CSRF token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Not found (never reveals whether a token or ID exists)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Action not allowed in the current status (e.g. reply to a finished enquiry, approve a stale version)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    QuoteExpired:
+      description: Quote is past valid_until + 30 days
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    RateLimited:
+      description: Too many requests from this IP
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Seconds to wait
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Ok:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean, const: true }
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [validation_error, unauthenticated, csrf_failed, not_found, conflict, quote_expired, rate_limited, server_error]
+            message: { type: string, description: User-facing text from DESIGN.md §7.3 }
+            fields:
+              type: object
+              additionalProperties: { type: string }
+              description: Per-field messages for validation_error
+
+    ContactRequest:
+      type: object
+      required: [name, email, message]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120, description: 'CR/LF stripped (TC-CON-06)' }
+        email: { type: string, format: email, maxLength: 200 }
+        message: { type: string, minLength: 1, maxLength: 2000 }
+        website: { type: string, maxLength: 0, description: 'Honeypot: must be empty' }
+        sourceBriefId: { type: integer, minimum: 1, description: Set by brief pages (F13) }
+
+    EnquiryStartRequest:
+      type: object
+      required: [name, channel, description]
+      description: |
+        channel=email → email required. channel=whatsapp → phone required (normalised to E.164 digits,
+        default country code from WHATSAPP_DEFAULT_COUNTRY_CODE). Both may be given.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        channel: { type: string, enum: [email, whatsapp] }
+        email: { type: string, format: email, maxLength: 200 }
+        phone: { type: string, maxLength: 20, examples: ['98450 12345', '+91 98450-12345'] }
+        description: { type: string, minLength: 5, maxLength: 1000 }
+        website: { type: string, maxLength: 0, description: 'Honeypot: must be empty' }
+        sourceBriefId: { type: integer, minimum: 1 }
+
+    EnquiryReplyRequest:
+      type: object
+      required: [answer]
+      properties:
+        answer: { type: string, minLength: 1, maxLength: 1000 }
+
+    AgentTurnResponse:
+      type: object
+      required: [publicId, outcome]
+      description: Never contains prices or the customer's contact details.
+      properties:
+        publicId: { type: string }
+        outcome:
+          type: string
+          enum: [needs_info, ready, out_of_scope, fallback]
+          description: |
+            needs_info → show `question`. ready → show `understood` + "owner will confirm".
+            out_of_scope → show `message`. fallback → show the structured form pre-filled with `prefill`.
+        question: { type: string, maxLength: 300 }
+        message: { type: string, maxLength: 300 }
+        understood: { $ref: '#/components/schemas/UnderstoodSummary' }
+        prefill: { $ref: '#/components/schemas/Requirements' }
+        replyChannel: { type: string, enum: [email, whatsapp] }
+
+    UnderstoodSummary:
+      type: object
+      properties:
+        serviceName: { type: string }
+        quantity: { type: integer }
+        eventDate: { type: string, format: date }
+        location: { type: string }
+        addonNames: { type: array, items: { type: string } }
+
+    Requirements:
+      type: object
+      description: Same shape as the agent's finish_intake.requirements (PRD §6.3) and the pricing engine input.
+      required: [service_id, quantity]
+      properties:
+        service_id: { type: string, pattern: '^[a-z0-9_]{2,40}$' }
+        quantity: { type: integer, minimum: 1, maximum: 10000 }
+        event_date: { type: string, format: date }
+        location: { type: string, maxLength: 120 }
+        distance_km: { type: number, minimum: 0, maximum: 500 }
+        addon_ids:
+          type: array
+          maxItems: 20
+          items: { type: string, pattern: '^[a-z0-9_]{2,40}$' }
+        notes: { type: string, maxLength: 1000 }
+
+    LineItem:
+      type: object
+      required: [kind, label, amount]
+      properties:
+        kind: { type: string, enum: [service, addon, minimum_adjustment, weekend, travel, discount, tax] }
+        label: { type: string, examples: ['Veg buffet'] }
+        quantity: { type: number }
+        unitPrice: { type: integer, description: Whole rupees }
+        amount: { type: integer, description: 'Whole rupees, rounded half up; negative for discounts' }
+        reason: { type: string, description: Required for discount lines }
+
+    Estimate:
+      type: object
+      required: [id, version, status, lineItems, total, currency]
+      properties:
+        id: { type: integer }
+        version: { type: integer }
+        status: { type: string, enum: [draft, approved, sent, approved_send_failed, superseded] }
+        lineItems: { type: array, items: { $ref: '#/components/schemas/LineItem' } }
+        subtotal: { type: integer }
+        tax: { type: integer }
+        total: { type: integer }
+        currency: { type: string, const: INR }
+        warnings:
+          type: array
+          items:
+            type: string
+            enum: [below_min_qty, above_max_qty, unknown_location, outside_delivery_area, missing_date]
+        revisionReason: { type: string, maxLength: 300 }
+        validUntil: { type: string, format: date }
+
+    EstimateEditRequest:
+      type: object
+      required: [requirements, revisionReason]
+      properties:
+        requirements: { $ref: '#/components/schemas/Requirements' }
+        discount:
+          type: object
+          required: [amount, reason]
+          properties:
+            amount: { type: integer, minimum: 1, description: Whole rupees off }
+            reason: { type: string, minLength: 3, maxLength: 200 }
+        note: { type: string, maxLength: 500, description: Shown to the customer on the quote }
+        revisionReason: { type: string, minLength: 3, maxLength: 300 }
+
+    ApproveResponse:
+      type: object
+      required: [enquiryStatus, estimateStatus, channel]
+      properties:
+        enquiryStatus: { type: string, enum: [quoted, awaiting_approval] }
+        estimateStatus: { type: string, enum: [sent, approved, approved_send_failed] }
+        channel: { type: string, enum: [email, whatsapp] }
+        quoteUrl: { type: string, examples: ['https://liaisa.co.in/q/Xy…'] }
+        whatsappUrl: { type: string, description: Present when channel=whatsapp; owner opens it }
+
+    WhatsAppLink:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, examples: ['https://wa.me/919845012345?text=Hi%20Priya%2C…'] }
+
+    QuoteQuestionRequest:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, minLength: 2, maxLength: 1000 }
+
+    QuoteActionResponse:
+      type: object
+      required: [enquiryStatus]
+      properties:
+        enquiryStatus: { type: string, enum: [won, lost, quoted, followed_up] }
+        message: { type: string, description: 'e.g. "Accepted. Mehfil Kitchen will be in touch to confirm."' }
+
+    DashboardSummary:
+      type: object
+      required: [needsYou, week]
+      properties:
+        needsYou:
+          type: array
+          items:
+            type: object
+            required: [kind, enquiryId, customerName, label]
+            properties:
+              kind: { type: string, enum: [approval, review, whatsapp_reminder, customer_question, send_failed] }
+              enquiryId: { type: integer }
+              followupId: { type: integer }
+              customerName: { type: string }
+              what: { type: string, examples: ['Veg buffet, 40 · 13 Dec'] }
+              label: { type: string, description: Status label from DESIGN.md §7.2 }
+              total: { type: integer }
+        week:
+          type: object
+          properties:
+            enquiries: { type: integer }
+            quotesSent: { type: integer }
+            accepted: { type: integer }
+            aiCostInr: { type: number }
+
+    ClientSegment:
+      type: object
+      required: [id, name, who, whyTheyBuy, whereToFind]
+      properties:
+        id: { type: string, pattern: '^[a-z0-9-]{2,60}$' }
+        name: { type: string, maxLength: 80 }
+        who: { type: string, maxLength: 300 }
+        whyTheyBuy: { type: string, maxLength: 300 }
+        whereToFind: { type: array, maxItems: 6, items: { type: string, maxLength: 160 } }
+        suggestedServiceIds: { type: array, items: { type: string } }
+        openingLine: { type: string, maxLength: 200 }
+
+    ClientPlan:
+      type: object
+      required: [planId, segments]
+      properties:
+        planId: { type: integer }
+        segments:
+          type: array
+          minItems: 3
+          maxItems: 5
+          items: { $ref: '#/components/schemas/ClientSegment' }
+
+    BriefContent:
+      type: object
+      required: [headline, problem, offer, whyUs, cta]
+      properties:
+        headline: { type: string, maxLength: 120 }
+        problem: { type: string, maxLength: 600 }
+        offer: { type: string, maxLength: 600 }
+        whyUs: { type: array, maxItems: 5, items: { type: string, maxLength: 200 } }
+        cta: { type: string, maxLength: 120 }
+
+    Brief:
+      type: object
+      required: [id, slug, status, content, packages]
+      properties:
+        id: { type: integer }
+        slug: { type: string, pattern: '^[a-z0-9-]{3,80}$' }
+        status: { type: string, enum: [draft, published, archived] }
+        content: { $ref: '#/components/schemas/BriefContent' }
+        packages:
+          type: array
+          description: Priced by the pricing engine
+          items:
+            type: object
+            properties:
+              label: { type: string }
+              requirements: { $ref: '#/components/schemas/Requirements' }
+              total: { type: integer }
+        publicUrl: { type: string, examples: ['https://liaisa.co.in/for/office-lunches'] }
+        warnings: { type: array, items: { type: string } }
+        views: { type: integer }
