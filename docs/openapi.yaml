@@ -249,6 +249,7 @@ paths:
               type: object
               properties:
                 reason: { type: string, maxLength: 500 }
+                doNotContact: { type: boolean, description: 'Customer asked not to be contacted again (Client Finder never drafts for them)' }
       responses:
         '200':
           description: Declined
@@ -499,6 +500,177 @@ paths:
                   failed: { type: integer }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/CsrfFailed' }
+
+  /owner/clients:
+    get:
+      tags: [owner]
+      summary: Client Finder page (M10-lite). Tabs `?tab=reconnect` (default) and `?tab=leads`
+      description: |
+        HTML page. Reconnect lists past customers chosen by server rules (accepted, declined, quote expired, quiet),
+        one row per person, each with a rule-based "why now". People who asked not to be contacted, or were contacted
+        in the last 7 days, show why they can't be drafted for. No AI is used to choose anyone.
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: HTML page }
+        '302': { description: Not logged in, redirect to /owner/login }
+
+  /owner/clients/leads:
+    post:
+      tags: [owner]
+      summary: Add one lead (M10-lite). Name, an email or WhatsApp number, a one-line note
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, contact, note]
+              properties:
+                name: { type: string, maxLength: 120 }
+                contact: { type: string, description: 'An email address, or a mobile number (normalised for WhatsApp)' }
+                note: { type: string, minLength: 3, maxLength: 200 }
+          application/x-www-form-urlencoded:
+            schema: { type: object }
+      responses:
+        '201':
+          description: Created (JSON clients). HTML clients get a 303 back to the leads tab.
+          content:
+            application/json:
+              schema: { type: object, properties: { id: { type: integer } } }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /owner/clients/draft:
+    post:
+      tags: [owner]
+      summary: Draft one message for a past customer or a lead (M10-lite)
+      description: |
+        Claude (Haiku, through the existing AI client, logged in ai_calls with purpose `outreach`) writes a short
+        message from facts we hold: first name, last service, event type if known, date, outcome, a rule-based reason,
+        and the business name. It never sees contact details, prices or links. The server strips links and currency
+        amounts, rejects price words and invented numbers (one retry, then a standard template), and adds the business's
+        own enquiry link. Nothing is sent. Limits: `CLIENT_DRAFT_DAILY_CAP` drafts a day (default 20), nobody
+        contacted twice in 7 days, no drafts for do-not-contact people. An unsent draft for the same person is reused.
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, ref]
+              properties:
+                type: { type: string, enum: [customer, lead] }
+                ref: { type: string, description: 'customer: the person key from the list (e:<email> or p:<digits>); lead: the lead id' }
+      responses:
+        '201':
+          description: Draft saved (JSON clients). HTML clients get a 303 to /owner/clients/drafts/{id}.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [draftId, channel, message, source]
+                properties:
+                  draftId: { type: integer }
+                  channel: { type: string, enum: [email, whatsapp] }
+                  message: { type: string }
+                  source: { type: string, enum: [ai, template] }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 'Error code is one of: do_not_contact, recent, draft_limit, no_contact'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /owner/clients/drafts/{id}:
+    get:
+      tags: [owner]
+      summary: The editable draft (M10-lite). HTML page with an Approve & send button
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: HTML page }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /owner/clients/drafts/{id}/send:
+    post:
+      tags: [owner]
+      summary: Approve & send the (edited) draft (M10-lite)
+      description: |
+        The owner's approval of the text. Email: saved first, then sent through the mail service (`sent` or `failed`,
+        recorded in `emails` with type `outreach`). WhatsApp: recorded as `opened`; HTML clients get a 302 to the
+        wa.me link, JSON clients get the URL. Only the business's own links may appear in the text. Draft or failed
+        drafts only (409 once sent). The 7-day and do-not-contact rules are checked again.
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: { type: string, minLength: 5, maxLength: 1000 }
+      responses:
+        '200':
+          description: Result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [channel, status]
+                properties:
+                  channel: { type: string, enum: [email, whatsapp] }
+                  status: { type: string, enum: [sent, failed, opened] }
+                  url: { type: string, description: 'wa.me link, whatsapp only' }
+        '302': { description: Redirect to the wa.me URL (whatsapp, HTML clients) }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /owner/clients/dnc:
+    post:
+      tags: [owner]
+      summary: Mark a customer or lead as do not contact (M10-lite)
+      description: Flags all of the person's enquiries (or the lead) and discards any unsent draft. No message can be drafted for them afterwards.
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, ref]
+              properties:
+                type: { type: string, enum: [customer, lead] }
+                ref: { type: string }
+      responses:
+        '200':
+          description: Marked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /owner/client-finder/plan:
     post:

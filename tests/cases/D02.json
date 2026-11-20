@@ -1,0 +1,4 @@
+{ "id": "D02", "name": "declined, asked about a discount", "kind": "draft",
+  "subject": { "type": "customer", "name": "Arjun Mehta", "service": "Non-veg buffet", "eventType": null, "eventDate": "2026-12-09",
+    "outcome": { "code": "declined", "label": "Declined" }, "reason": { "code": "discount", "text": "asked about a discount" } },
+  "otherServices": ["veg buffet", "dosa", "live counter", "dessert", "serving staff"] }

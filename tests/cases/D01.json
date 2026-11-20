@@ -1,0 +1,4 @@
+{ "id": "D01", "name": "accepted customer, event soon", "kind": "draft",
+  "subject": { "type": "customer", "name": "Priya Nair", "service": "Veg buffet", "eventType": "housewarming", "eventDate": "2026-12-13",
+    "outcome": { "code": "accepted", "label": "Accepted" }, "reason": { "code": "upcoming", "text": "event in 2 weeks" } },
+  "otherServices": ["non-veg", "dosa", "live counter", "dessert", "serving staff"] }

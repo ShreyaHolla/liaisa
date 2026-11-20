@@ -8,6 +8,7 @@ import { createRepos } from '../src/container.js';
 import { seed } from '../src/seed.js';
 import { createClaudeClient } from '../src/ai/claudeClient.js';
 import { startEnquiry, replyToEnquiry, presentResult } from '../src/services/enquiries/enquiryService.js';
+import { factsFor, generateDraft, MAX_WORDS } from '../src/services/clients/draft.js';
 
 const casesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'cases');
 const FIXED_NOW = new Date('2026-11-20T10:00:00Z'); // so "12 Dec" always means 2026
@@ -33,7 +34,7 @@ function checkRequirements(want, got, label, fails) {
 async function runCase(c) {
   const repos = createRepos();
   seed(repos);
-  const ai = createClaudeClient({ apiKey: config.anthropicApiKey, models: { intake: config.ai.modelIntake } });
+  const ai = createClaudeClient({ apiKey: config.anthropicApiKey, models: { intake: config.ai.modelIntake, outreach: config.ai.modelOutreach } });
   const deps = { repos, ai, config, now: () => FIXED_NOW };
   const steps = [];
   const shown = []; // everything the customer would see
@@ -110,6 +111,44 @@ async function runCase(c) {
   };
 }
 
+// ---- Client Finder draft cases (D01-D03): quality of the outreach message --------------------------
+const NO_PRICES = /₹|\brs\.?\s*\d|\binr\b|\$\s*\d|\d\s*%|\b(?:price[sd]?|pricing|costs?|discounts?|cheap\w*|free|complimentary|deals?|offers?|rupees?)\b/i;
+const INVENTED_CLAIMS = /\b(?:years?|awards?|reviews?|rated|testimonials?|ratings?|stars?)\b/i;
+const EVENT_WORDS = ['wedding', 'birthday', 'anniversary', 'housewarming', 'engagement', 'baby shower', 'farewell', 'festival', 'diwali'];
+
+async function runDraftCase(c) {
+  const repos = createRepos();
+  seed(repos);
+  const ai = createClaudeClient({ apiKey: config.anthropicApiKey, models: { intake: config.ai.modelIntake, outreach: config.ai.modelOutreach } });
+  const facts = factsFor(c.subject, repos.businessSettings.get());
+  const result = await generateDraft({ repos, ai, config, now: () => FIXED_NOW }, facts);
+  const text = result.text;
+  const lower = text.toLowerCase();
+  const fails = [];
+  if (result.source !== 'ai') fails.push('the model draft was rejected twice (standard template used)');
+  const words = text.trim().split(/\s+/).length;
+  if (words >= MAX_WORDS) fails.push(`${words} words (max ${MAX_WORDS - 1})`);
+  if (!new RegExp(`\\b${facts.first_name}\\b`, 'i').test(text)) fails.push(`does not use the first name ${facts.first_name}`);
+  if (NO_PRICES.test(text)) fails.push('mentions a price, discount or offer');
+  if (/https?:|www\./i.test(text)) fails.push('contains a link');
+  if (INVENTED_CLAIMS.test(text)) fails.push('claims years, awards, reviews or ratings that are not in the facts');
+  const allowed = new Set(JSON.stringify(facts).match(/\d+/g) ?? []);
+  const invented = (text.match(/\d+/g) ?? []).filter((d) => !allowed.has(d));
+  if (invented.length) fails.push(`numbers that are not in the facts: ${invented.join(', ')}`);
+  // (?<!non[- ]) so "veg buffet" is not found inside the customer's own "non-veg buffet"
+  for (const s of c.otherServices ?? []) if (new RegExp(`(?<!non[- ])${s.replace(/[-]/g, '[- ]')}`, 'i').test(lower)) fails.push(`mentions a service that is not in the facts: "${s}"`);
+  for (const w of EVENT_WORDS) if (lower.includes(w) && !(facts.event_type ?? '').includes(w)) fails.push(`mentions an event type that is not in the facts: "${w}"`);
+
+  // Only this case's own calls: the seed adds demo ai_calls rows that must not be counted.
+  const rows = repos.aiCalls.all().filter((r) => r.purpose === 'outreach');
+  const sum = (k) => rows.reduce((n, r) => n + r[k], 0);
+  return {
+    id: c.id, name: c.name, fails, text, words, attempts: result.attempts, used: rows.length,
+    tokens: { input: sum('inputTokens'), output: sum('outputTokens'), cacheRead: sum('cacheReadTokens'), cacheWrite: sum('cacheWriteTokens') },
+    cost: sum('costUsd'),
+  };
+}
+
 const files = fs.readdirSync(casesDir).filter((f) => /^E\d+\.json$/.test(f)).sort();
 const results = [];
 for (const f of files) {
@@ -130,17 +169,34 @@ for (const f of files) {
   for (const s of r.steps) if (s.question) console.log(`        Q: ${s.question}`);
 }
 
+const drafts = [];
+for (const f of fs.readdirSync(casesDir).filter((x) => /^D\d+\.json$/.test(x)).sort()) {
+  const c = JSON.parse(fs.readFileSync(path.join(casesDir, f), 'utf8'));
+  let r;
+  try {
+    r = await runDraftCase(c);
+  } catch (err) {
+    r = { id: c.id, name: c.name, fails: [`crashed: ${err?.status ?? err?.code ?? err?.name}`], text: '', words: 0, attempts: 0, used: 0, tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, cost: 0 };
+  }
+  drafts.push(r);
+  console.log(`${r.fails.length ? 'FAIL' : 'PASS'}  ${r.id} ${r.name}  [${r.words} words, ${r.attempts} request${r.attempts === 1 ? '' : 's'}]`);
+  for (const x of r.fails) console.log(`        - ${x}`);
+  if (r.text) console.log(`        > ${r.text.replace(/\n+/g, ' ')}`);
+}
+
 const core = results.filter((r) => Number(r.id.slice(1)) <= 10);
 const passed = core.filter((r) => !r.fails.length).length;
 const must = ['E08', 'E10'].every((id) => results.find((r) => r.id === id)?.fails.length === 0);
-const tot = (k) => results.reduce((n, r) => n + r.tokens[k], 0);
-const cost = results.reduce((n, r) => n + r.cost, 0);
+const all = [...results, ...drafts];
+const tot = (k) => all.reduce((n, r) => n + r.tokens[k], 0);
+const cost = all.reduce((n, r) => n + r.cost, 0);
 const priced = Object.values(config.ai.prices).some((p) => p > 0);
 
 console.log('\n--- Summary ---');
 console.log(`E01-E10: ${passed}/10 passed (bar: 9, with E08 and E10)  E08+E10: ${must ? 'pass' : 'FAIL'}`);
 for (const r of results.filter((x) => Number(x.id.slice(1)) > 10)) console.log(`${r.id}: ${r.fails.length ? 'FAIL' : 'pass'}`);
-console.log(`Requests: ${results.reduce((n, r) => n + r.used, 0)} (max per case ${Math.max(...results.map((r) => r.used))})`);
+console.log(`Drafts D01-D03: ${drafts.filter((r) => !r.fails.length).length}/${drafts.length} passed`);
+console.log(`Requests: ${all.reduce((n, r) => n + r.used, 0)} (max per case ${Math.max(...all.map((r) => r.used))})`);
 console.log(`Tokens: input ${tot('input')}, output ${tot('output')}, cache read ${tot('cacheRead')}, cache write ${tot('cacheWrite')}`);
 console.log(priced ? `Cost: $${cost.toFixed(4)} (model ${config.ai.modelIntake})` : 'Cost: not computed (set the AI_PRICE_* variables in .env)');
-process.exit(passed >= 9 && must ? 0 : 1);
+process.exit(passed >= 9 && must && drafts.every((r) => !r.fails.length) ? 0 : 1);

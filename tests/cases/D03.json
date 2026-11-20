@@ -1,0 +1,3 @@
+{ "id": "D03", "name": "new lead from a one-line note", "kind": "draft",
+  "subject": { "type": "lead", "name": "Dev Rao", "note": "HR manager at a software company in Whitefield" },
+  "otherServices": ["veg buffet", "non-veg", "dosa", "live counter", "dessert", "serving staff"] }
