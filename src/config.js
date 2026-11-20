@@ -17,6 +17,10 @@ const schema = z
     AI_ENABLED: bool('true'),
     AI_MODEL_INTAKE: withDefault(z.string(), 'claude-haiku-5-5'),
     AI_MODEL_OUTREACH: withDefault(z.string(), 'claude-haiku-5-5'),
+    // Chosen by checking the Models API: claude-haiku-5-5 reports capabilities.server_tools.web_search.supported.
+    AI_MODEL_DISCOVERY: withDefault(z.string(), 'claude-haiku-5-5'),
+    CLIENT_DISCOVERY_DAILY_CAP: withDefault(z.coerce.number().int().min(0), 10),
+    AI_PRICE_WEB_SEARCH: withDefault(z.coerce.number().min(0), 0.01),
     CLIENT_DRAFT_DAILY_CAP: withDefault(z.coerce.number().int().min(0), 20),
     AI_DAILY_REQUEST_CAP: withDefault(z.coerce.number().int().min(0), 200),
     AI_PRICE_INPUT_PER_MTOK: withDefault(z.coerce.number().min(0), 0),
@@ -98,6 +102,8 @@ export function loadConfig(env = process.env) {
     ai: {
       modelIntake: e.AI_MODEL_INTAKE,
       modelOutreach: e.AI_MODEL_OUTREACH,
+      modelDiscovery: e.AI_MODEL_DISCOVERY,
+      webSearchPrice: e.AI_PRICE_WEB_SEARCH, // USD per search
       dailyCap: e.AI_DAILY_REQUEST_CAP,
       prices: {
         input: e.AI_PRICE_INPUT_PER_MTOK,
@@ -107,6 +113,7 @@ export function loadConfig(env = process.env) {
       },
     },
     clientDraftDailyCap: e.CLIENT_DRAFT_DAILY_CAP,
+    clientDiscoveryDailyCap: e.CLIENT_DISCOVERY_DAILY_CAP,
     whatsappCountryCode: e.WHATSAPP_DEFAULT_COUNTRY_CODE,
     mailEnabled: e.MAIL_ENABLED,
     ownerEmail: e.OWNER_EMAIL,

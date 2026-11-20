@@ -31,6 +31,7 @@ export const DEMO_BUSINESS = {
   tagline: 'Home-style catering for Bengaluru celebrations',
   currencySymbol: '₹',
   whatsappNumber: null,
+  city: 'Bengaluru',
   followupAfterDays: 2,
 };
 

@@ -16,6 +16,20 @@ export const step = {
   calc: (input) => toolUse('calculate_estimate', input),
   finish: (input) => toolUse('finish_intake', input),
   draft: (message) => toolUse('draft_message', { message }),
+  /**
+   * A web-search turn: `results` are the URLs the search "found", `leads` what submit_leads returns,
+   * `cited` extra URLs that appear only as citations. `searches` is what usage reports.
+   */
+  discovery: ({ results = [], leads = [], cited = [], searches = 2, submit = true } = {}) => ({
+    content: [
+      { type: 'server_tool_use', id: 'srvtoolu_mock_1', name: 'web_search', input: { query: 'mock query' } },
+      { type: 'web_search_tool_result', tool_use_id: 'srvtoolu_mock_1', content: results.map((url) => ({ type: 'web_search_result', url, title: 'Mock result', page_age: null })) },
+      ...(cited.length ? [{ type: 'text', text: 'Found some organisations.', citations: cited.map((url) => ({ type: 'web_search_result_location', url, title: 'Mock', cited_text: 'x' })) }] : []),
+      ...(submit ? [{ type: 'tool_use', id: `toolu_mock_${++seq}`, name: 'submit_leads', input: { leads } }] : []),
+    ],
+    stopReason: submit ? 'tool_use' : 'end_turn',
+    usage: { input: 6000, output: 900, cacheRead: 0, cacheWrite: 0, webSearchRequests: searches },
+  }),
   error: (status = 500) => ({ error: Object.assign(new Error(`mock API error ${status}`), { status }) }),
 };
 
@@ -87,8 +101,30 @@ function outreachStep(req) {
   return step.draft(templateDraft(facts));
 }
 
+/** Find clients: a fixed, deterministic list on fake .example domains. Only the city, areas and services vary the text. */
+function discoveryStep(req) {
+  const last = req.messages.find((m) => typeof m.content === 'string' && m.content.includes('<business>'));
+  const facts = JSON.parse(/<business>([\s\S]*?)<\/business>/.exec(last.content)[1]);
+  const city = facts.city ?? 'the city';
+  const area = facts.focus_area ?? facts.areas?.[0] ?? city;
+  const service = facts.focus_service?.toLowerCase() ?? 'catering';
+  const orgs = [
+    ['Northfield Corporate Park Facilities', 'facilities management company', `Runs a corporate park near ${area} where teams often need ${service} for events.`, 'northfield-facilities.example/about', 'events@northfield-facilities.example'],
+    [`${area} Residents Welfare Association`, 'residential society', `A residents' association in ${area} that organises community gatherings.`, 'residents-welfare.example/community', null],
+    ['Lakeside Events Collective', 'event planning company', `Plans weddings and corporate events around ${city} and works with outside caterers.`, 'lakeside-events.example/services', 'hello@lakeside-events.example'],
+    ['Greenleaf International School', 'school', `Hosts annual days and parent evenings in ${area}.`, 'greenleaf-school.example/events', 'office@greenleaf-school.example'],
+    ['Hub Nine Co-working', 'co-working space', `A co-working space in ${city} that runs member lunches and meetups.`, 'hubnine.example/community', null],
+  ];
+  return step.discovery({
+    results: orgs.map((o) => `https://${o[3]}`),
+    leads: orgs.map(([organisation, type, why_a_fit, url, public_contact]) => ({ organisation, type, why_a_fit, source_url: `https://${url}`, public_contact })),
+    searches: 2,
+  });
+}
+
 function autoStep(req) {
   if (req.purpose === 'outreach') return outreachStep(req);
+  if (req.purpose === 'discovery') return discoveryStep(req);
   const sys = req.system.map((b) => b.text).join('\n');
   const cat = JSON.parse(/<catalogue>([\s\S]*?)<\/catalogue>/.exec(sys)[1]);
   const users = req.messages.filter((m) => m.role === 'user' && typeof m.content === 'string').map((m) => m.content);
