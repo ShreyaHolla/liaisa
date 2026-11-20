@@ -29,7 +29,7 @@ function stateBlock(known, missing, questionsLeft) {
 export function promptExamples(pricing) {
   const service = pricing.services[0] ?? { id: 'service', name: 'Service' };
   const area = Object.keys(pricing.travel.areas)[0] ?? 'Area';
-  const typo = area.length > 3 ? `${area.slice(0, 2)}${area.slice(3)}` : area; // drops the third letter
+  const typo = area.length > 4 ? `${area.slice(0, 3)}${area.slice(4)}` : area; // drops the fourth letter
   const names = pricing.services.slice(0, 2).map((s) => s.name.toLowerCase()).join(' or ');
   return {
     ex_service_id: service.id, ex_service_name: service.name, ex_service_names: names || service.name.toLowerCase(),
