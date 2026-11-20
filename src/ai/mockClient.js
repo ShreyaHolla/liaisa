@@ -4,6 +4,7 @@
 // A step is a response, a function (request) => response, or { error }. `calls` records requests.
 
 import { formatDate } from '../util/formatDate.js';
+import { templateDraft } from '../services/clients/template.js';
 
 let seq = 0;
 const toolUse = (name, input) => ({
@@ -14,6 +15,7 @@ const toolUse = (name, input) => ({
 export const step = {
   calc: (input) => toolUse('calculate_estimate', input),
   finish: (input) => toolUse('finish_intake', input),
+  draft: (message) => toolUse('draft_message', { message }),
   error: (status = 500) => ({ error: Object.assign(new Error(`mock API error ${status}`), { status }) }),
 };
 
@@ -77,7 +79,16 @@ function playback(r, cat) {
   return [name, ...parts].filter(Boolean).join(' ');
 }
 
+/** Client Finder draft: deterministic, built from the <facts> in the prompt. No randomness, no prices. */
+function outreachStep(req) {
+  const last = req.messages.at(-1);
+  const content = typeof last.content === 'string' ? last.content : '';
+  const facts = JSON.parse(/<facts>([\s\S]*?)<\/facts>/.exec(content)[1]);
+  return step.draft(templateDraft(facts));
+}
+
 function autoStep(req) {
+  if (req.purpose === 'outreach') return outreachStep(req);
   const sys = req.system.map((b) => b.text).join('\n');
   const cat = JSON.parse(/<catalogue>([\s\S]*?)<\/catalogue>/.exec(sys)[1]);
   const users = req.messages.filter((m) => m.role === 'user' && typeof m.content === 'string').map((m) => m.content);
