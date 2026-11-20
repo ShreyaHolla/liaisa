@@ -29,7 +29,7 @@ export function parseSetupBody(body) {
   const areas = rows(['areaName', 'areaFee'], 'areaRemove', ['areaName', 'areaFee']).map((r) => ({ name: r.areaName, fee: r.areaFee }));
   return {
     businessName: str(body.businessName), tagline: str(body.tagline), currencySymbol: str(body.currencySymbol),
-    whatsappNumber: str(body.whatsappNumber), weekendPct: str(body.weekendPct), taxPct: str(body.taxPct), services, areas,
+    whatsappNumber: str(body.whatsappNumber), followupAfterDays: str(body.followupAfterDays), weekendPct: str(body.weekendPct), taxPct: str(body.taxPct), services, areas,
   };
 }
 

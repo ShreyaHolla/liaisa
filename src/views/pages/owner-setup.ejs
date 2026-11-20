@@ -104,6 +104,16 @@
       </fieldset>
 
       <fieldset>
+        <legend>Follow-ups</legend>
+        <div class="field">
+          <label for="followupAfterDays">Remind me to follow up after (days)</label>
+          <input id="followupAfterDays" name="followupAfterDays" type="number" min="0" max="60" step="1" inputmode="numeric" value="<%= v.followupAfterDays %>"<%- bad('followupAfterDays') %>>
+          <%- fe('followupAfterDays') %>
+          <p class="slate small">A sent quote with no reply appears under “Follow-up due” after this many days. Use 0 to see it straight away, for a demo.</p>
+        </div>
+      </fieldset>
+
+      <fieldset>
         <legend>Surcharge and tax</legend>
         <div class="field">
           <label for="weekendPct">Weekend surcharge (%)</label>

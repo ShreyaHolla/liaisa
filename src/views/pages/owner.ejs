@@ -46,6 +46,26 @@
 
     <p class="slate small">This week: <%= summary.week.enquiries %> enquiries · <%= summary.week.quotesSent %> quotes sent · <%= summary.week.accepted %> accepted</p>
 
+    <section class="section" aria-labelledby="fu-h">
+      <h2 id="fu-h">Follow-up due (<%= summary.followUps.length %>)</h2>
+      <div class="panel">
+        <% if (summary.followUps.length === 0) { %>
+          <p class="slate">No sent quotes are waiting for a reminder.</p>
+        <% } else { %>
+          <ul class="rows">
+            <% summary.followUps.forEach(function (f) { %>
+              <li>
+                <span class="grow"><strong><%= f.customerName %></strong>
+                  <% if (f.what) { %><span class="what"> · <%= f.what %></span><% } %></span>
+                <span class="slate small"><%= f.quoteAge %> · <%= f.remindersSent %> of 2 reminders sent</span>
+                <a class="btn secondary" href="/owner/enquiries/<%= f.enquiryId %>">Follow up<span class="sr"> with <%= f.customerName %></span></a>
+              </li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </div>
+    </section>
+
     <section class="section" aria-labelledby="all-h">
       <h2 id="all-h">All enquiries</h2>
       <% if (summary.all.length === 0) { %>

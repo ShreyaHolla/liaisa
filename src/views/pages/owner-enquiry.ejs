@@ -15,6 +15,35 @@
       <p class="banner tone-<%= notice[0] === 'ok' ? 'done' : 'problem' %>" role="<%= notice[0] === 'ok' ? 'status' : 'alert' %>"><%= notice[1] %></p>
     <% } %>
 
+    <% if (followup) { %>
+      <section class="panel followup" aria-labelledby="fu-h">
+        <h2 id="fu-h">Follow up</h2>
+        <% if (followup.due) { %>
+          <p>No reply yet. This is reminder <%= followup.sentCount + 1 %> of <%= followup.max %>, by <%= followup.channel === 'whatsapp' ? 'WhatsApp' : 'email' %>.</p>
+          <p class="slate small">Draft message</p>
+          <blockquote class="draft"><%= followup.draft.text %></blockquote>
+          <% if (followup.channel === 'whatsapp' && followup.canSend) { %><p class="slate small">This opens WhatsApp with the message filled in. You tap Send there.</p><% } %>
+          <% if (!followup.canSend) { %><p class="banner tone-problem" role="alert"><%= followup.channel === 'email' ? 'Email sending is switched off, so this reminder can’t be sent.' : 'This customer didn’t give a phone number.' %></p><% } %>
+        <% } else if (followup.reason === 'waiting') { %>
+          <p>No reply yet. The next reminder can go out on <%= formatDate(followup.dueAt.toISOString().slice(0, 10)) %>.</p>
+        <% } else { %>
+          <p>Both reminders for this quote have been sent.</p>
+        <% } %>
+        <div class="actions">
+          <% if (followup.canSend) { %>
+            <form method="post" action="/owner/enquiries/<%= enquiry.id %>/followup/send">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn" type="submit">Send reminder</button>
+            </form>
+          <% } %>
+          <form method="post" action="/owner/enquiries/<%= enquiry.id %>/followup/done">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="btn secondary" type="submit">Mark as done</button>
+          </form>
+        </div>
+      </section>
+    <% } %>
+
     <div class="cols">
       <section class="panel quote-col" aria-labelledby="quote-h">
         <% if (!estimate) { %>
@@ -152,6 +181,7 @@
         <h2>Activity</h2>
         <ul class="rows small">
           <% emails.forEach(function (m) { %><li>Quote email to <%= m.toAddress %>: <%= m.status === 'accepted' ? 'sent' : 'failed' %> · <%= timeAgo(m.createdAt, now) %></li><% }) %>
+          <% reminders.forEach(function (r) { %><li><%= r.text %> · <%= timeAgo(r.at, now) %></li><% }) %>
           <% shares.forEach(function (s) { %><li>Opened in WhatsApp · <%= timeAgo(s.createdAt, now) %></li><% }) %>
           <% responses.forEach(function (r) { %><li>Customer <%= r.type === 'accept' ? 'accepted' : r.type === 'decline' ? 'declined' : 'asked a question' %><%= r.message ? ': “' + r.message + '”' : '' %> · <%= timeAgo(r.createdAt, now) %></li><% }) %>
           <li>AI requests used: <%= enquiry.aiRequestsUsed %></li>

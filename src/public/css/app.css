@@ -161,3 +161,7 @@ dialog p { margin-top: 0; font-size: var(--t-md); }
 .grid-row .field { margin: 0; }
 .remove { display: flex; align-items: center; gap: var(--s-2); min-height: 44px; font-size: var(--t-sm); color: var(--rose); margin: 0; }
 .remove input { width: auto; }
+
+/* M8-lite: follow-up panel */
+.followup { margin-bottom: var(--s-5); }
+.draft { margin: 0 0 var(--s-3); padding-left: var(--s-3); border-left: 3px solid var(--plum); }

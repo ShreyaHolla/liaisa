@@ -3,6 +3,7 @@ import { timeAgo, unitNoun } from '../../util/format.js';
 import { formatDate } from '../../util/formatDate.js';
 import { currentEstimate } from '../quotes/approval.js';
 import { understoodOf } from '../enquiries/enquiryService.js';
+import { followupState, dueFollowUps, draftReminder, MAX_REMINDERS } from '../followups/reminders.js';
 
 /** DESIGN §7.2: DB status -> [owner label, tone]. */
 const STATUS = {
@@ -56,7 +57,8 @@ function needsYouItem(repos, pricing, enquiry, estimate) {
   return null;
 }
 
-export function dashboardSummary({ repos }, now = new Date()) {
+export function dashboardSummary(deps, now = new Date()) {
+  const { repos } = deps;
   const pricing = repos.pricingConfigs.latestApproved().configJson;
   const enquiries = repos.enquiries.list();
   const since = now.getTime() - 7 * 86400000;
@@ -74,11 +76,17 @@ export function dashboardSummary({ repos }, now = new Date()) {
     accepted: repos.customerResponses.all().filter((r) => r.type === 'accept' && r.createdAt.getTime() >= since).length,
   };
 
+  // Quotes that were sent, got no reply, and are due a reminder (M8-lite).
+  const followUps = dueFollowUps(deps, now).map(({ enquiry, state }) => ({
+    enquiryId: enquiry.id, customerName: enquiry.customerName, what: whatOf(pricing, enquiry.requirementsJson),
+    quoteAge: `Quote sent ${timeAgo(state.quoteSentAt, now)}`, remindersSent: state.sentCount,
+  }));
+
   const all = enquiries.map((e) => {
     const [label, tone] = statusOf(e, currentEstimate(repos, e.id));
     return { id: e.id, name: e.customerName, what: whatOf(pricing, e.requirementsJson), label, tone, updated: timeAgo(e.updatedAt, now) };
   });
-  return { needsYou, week, all };
+  return { needsYou, week, followUps, all };
 }
 
 /** Plain-words warning (DESIGN §4.5, §7.3). */
@@ -98,7 +106,8 @@ export function warningText(code, pricing, requirements = {}) {
 }
 
 /** Everything the enquiry detail page shows. */
-export function enquiryDetail({ repos, mailer }, id, now = new Date()) {
+export function enquiryDetail(deps, id, now = new Date()) {
+  const { repos, mailer } = deps;
   const enquiry = repos.enquiries.get(id);
   if (!enquiry) return null;
   const estimate = currentEstimate(repos, id);
@@ -110,15 +119,32 @@ export function enquiryDetail({ repos, mailer }, id, now = new Date()) {
   const open = ['awaiting_approval', 'needs_owner'].includes(enquiry.status);
   const approved = ['approved', 'sent', 'approved_send_failed'].includes(status);
   const discount = estimate?.lineItemsJson.find((l) => l.kind === 'discount');
+  const fstate = followupState(deps, enquiry, now);
+  const channel = enquiry.preferredChannel;
+  const followup = !fstate.show ? null : {
+    reason: fstate.reason, due: fstate.due, sentCount: fstate.sentCount, max: MAX_REMINDERS, dueAt: fstate.dueAt, channel,
+    draft: fstate.due ? draftReminder(deps, enquiry, fstate) : null,
+    canSend: fstate.due && (channel === 'whatsapp' ? Boolean(enquiry.customerPhone) : Boolean(mailer && enquiry.customerEmail)),
+  };
+  // Reminders for the Activity list: numbered within their quote version, like the cap counts them.
+  const rows = repos.followups.listByEnquiry(id).filter((f) => f.status !== 'cancelled').sort((a, b) => a.step - b.step);
+  const rank = new Map();
+  const reminders = rows.map((f) => {
+    const n = f.status === 'sent' ? (rank.set(f.estimateId, (rank.get(f.estimateId) ?? 0) + 1), rank.get(f.estimateId)) : null;
+    const text = f.status === 'sent' ? `Reminder ${n} ${f.channel === 'whatsapp' ? 'opened in WhatsApp' : 'sent by email'}`
+      : f.status === 'failed' ? 'Reminder email didn’t send' : 'Reminder email sending';
+    return { text, at: f.sentAt ?? f.createdAt };
+  });
   return {
+    followup, reminders,
     enquiry, estimate, pricing, requirements, label, tone,
     what: whatOf(pricing, requirements),
     understood: enquiry.requirementsJson ? understoodOf(repos, enquiry.requirementsJson) : null,
     warnings: (estimate?.warningsJson ?? []).map((c) => warningText(c, pricing, requirements)),
     discount: discount ? { amount: -discount.amount, reason: discount.reason } : null,
     history: enquiry.aiState?.history ?? [],
-    emails: repos.emails.listByEnquiry(id),
-    shares: repos.whatsappShares.listByEnquiry(id),
+    emails: repos.emails.listByEnquiry(id).filter((m) => m.type === 'estimate'), // reminders are listed from the followups rows
+    shares: repos.whatsappShares.listByEnquiry(id).filter((s) => s.type === 'estimate'),
     responses: repos.customerResponses.listByEnquiry(id),
     question: (() => {
       const last = lastResponse(repos, id);

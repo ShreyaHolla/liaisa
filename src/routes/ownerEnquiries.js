@@ -6,6 +6,7 @@ import { errorBody } from '../middleware/errors.js';
 import { approveAndSend, editEstimate, declineEnquiry, retryQuoteEmail, shareOnWhatsapp } from '../services/quotes/approval.js';
 import { editSchema, approveSchema, flatErrors } from '../services/quotes/schema.js';
 import { dashboardSummary, enquiryDetail } from '../services/owner/dashboard.js';
+import { sendReminder, markFollowupDone } from '../services/followups/reminders.js';
 import { quoteUrl, describeLines } from '../services/quotes/messages.js';
 import { inr, timeAgo, unitLabel } from '../util/format.js';
 import { formatDate } from '../util/formatDate.js';
@@ -21,6 +22,9 @@ const NOTICES = {
   retry_failed: ['problem', 'The quote email still didn’t send. Your quote is saved.'],
   edited: ['ok', 'New version saved. Review it, then approve.'],
   declined: ['ok', 'Enquiry declined. Nothing was sent.'],
+  reminder_sent: ['ok', 'Reminder sent'],
+  reminder_failed: ['problem', 'The reminder email didn’t send. Try again.'],
+  followup_done: ['ok', 'Marked as done. This follow-up is hidden.'],
   conflict: ['problem', 'That quote has changed or already moved on. Review it and try again.'],
   invalid: ['problem', 'Something in that request wasn’t right. Check it and try again.'],
 };
@@ -163,6 +167,27 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
       return fail(req, res, err, next, detailUrl(req));
     }
   }));
+
+  // ---- Follow up (M8-lite): the owner sends one reminder by hand ---------------------------
+  router.post('/enquiries/:id/followup/send', wrap(async (req, res, next) => {
+    try {
+      const result = await sendReminder(deps(), req.enquiryId);
+      if (wantsJson(req)) return res.json(result);
+      if (result.channel === 'whatsapp') return res.redirect(302, result.url);
+      return res.redirect(303, `${detailUrl(req)}?n=${result.status === 'sent' ? 'reminder_sent' : 'reminder_failed'}`);
+    } catch (err) {
+      return fail(req, res, err, next, detailUrl(req));
+    }
+  }));
+
+  router.post('/enquiries/:id/followup/done', (req, res, next) => {
+    try {
+      markFollowupDone(deps(), req.enquiryId);
+      return wantsJson(req) ? res.json({ ok: true }) : res.redirect(303, `${detailUrl(req)}?n=followup_done`);
+    } catch (err) {
+      return fail(req, res, err, next, detailUrl(req));
+    }
+  });
 
   // ---- Send on WhatsApp ------------------------------------------------------------------
   router.post('/enquiries/:id/whatsapp', (req, res, next) => {
