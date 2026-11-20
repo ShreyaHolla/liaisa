@@ -1,4 +1,3 @@
-import { createContactMessageStore } from './db/repos/contactMessages.js';
 import { createRegistry } from './db/registry.js';
 import { createMockClient } from './ai/mockClient.js';
 import { createClaudeClient } from './ai/claudeClient.js';
@@ -14,7 +13,6 @@ export function buildDeps(config) {
   const registry = createRegistry({ maxBusinesses: config.maxBusinesses });
   const repos = registry.addDemo(config);
   return {
-    contacts: createContactMessageStore(),
     registry,
     repos,
     ai: config.aiMode === 'live'

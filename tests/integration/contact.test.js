@@ -156,7 +156,7 @@ test('home page: renders the form with a hidden honeypot and no notice by defaul
 test('home page: ?contact=sent and ?contact=error show a one-line message; unknown values show none', async () => {
   const { app } = setup();
   const sent = await request(app).get('/?contact=sent');
-  assert.match(sent.text, /Thanks for writing/);
+  assert.match(sent.text, /Thanks, we got your message/);
   const err = await request(app).get('/?contact=error');
   assert.match(err.text, /Check your name, email and message/);
   const junk = await request(app).get('/?contact=%3Cscript%3E');

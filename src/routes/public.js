@@ -8,7 +8,7 @@ const { version } = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 
 // One-line messages for the no-JS contact fallback (?contact=...). Unknown values show nothing.
 const CONTACT_NOTICES = {
-  sent: { tone: 'ok', text: "Thanks for writing. We'll reply by email." },
+  sent: { tone: 'ok', text: "Thanks, we got your message. We'll reply by email." },
   error: { tone: 'error', text: 'Check your name, email and message, then send it again.' },
   limit: { tone: 'error', text: "You've sent a few messages in a row. Try again in an hour." },
 };

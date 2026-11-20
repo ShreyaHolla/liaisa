@@ -6,6 +6,7 @@ import { errorBody } from '../middleware/errors.js';
 import { normaliseEmail } from '../db/registry.js';
 import { ownerEnquiryRoutes } from './ownerEnquiries.js';
 import { ownerSetupRoutes } from './ownerSetup.js';
+import { ownerMessageRoutes } from './ownerMessages.js';
 import { ownerClientRoutes } from './ownerClients.js';
 
 // Owner pages default to HTML: JSON only when the client explicitly prefers it.
@@ -117,8 +118,11 @@ export function ownerRoutes({ config, registry, mailer = null, ai = null, sessio
       t.use((req, res, next) => {
         res.locals.pending = repos.enquiries.list().filter((e) => ['awaiting_approval', 'needs_owner'].includes(e.status)).length;
         res.locals.owner = req.owner;
+        res.locals.showMessages = Boolean(repos.business.isDemo);
+        res.locals.unreadMessages = repos.business.isDemo ? repos.contactMessages.unreadCount() : 0;
         next();
       });
+      t.use(ownerMessageRoutes({ repos }));
       t.use(ownerEnquiryRoutes({ repos, config, mailer }));
       t.use(ownerSetupRoutes({ repos, config }));
       t.use(ownerClientRoutes({ repos, config, ai, mailer }));

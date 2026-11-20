@@ -72,7 +72,7 @@ export function createApp(config, deps = buildDeps(config)) {
   // Some browsers ask for /favicon.ico whatever the page says: send them to the versioned SVG.
   app.get('/favicon.ico', (req, res) => res.redirect(302, assets.asset('/img/favicon.svg')));
   app.use(publicRoutes(config));
-  app.use(contactRoutes({ store: deps.contacts, mailer: deps.mailer, config }));
+  app.use(contactRoutes({ store: deps.contacts ?? registry.bySlug(DEMO_SLUG)?.contactMessages, mailer: deps.mailer, config }));
   // Customer pages for one business: /b/:slug/enquire, /b/:slug/api/enquiries, /b/:slug/q/:token.
   app.use('/b/:slug', businessRoutes({ registry, ai: deps.ai, config, mailer: deps.mailer }));
   // The old single-business address keeps working: it goes to the demo business.

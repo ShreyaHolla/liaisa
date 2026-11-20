@@ -1,0 +1,37 @@
+<%- include('../partials/head', { title: 'Messages · ' + businessName }) %>
+<%- include('../partials/owner-open', { active: 'messages', businessName: businessName, csrfToken: csrfToken, pending: typeof pending !== 'undefined' ? pending : 0 }) %>
+<div class="page-head">
+  <h1>Messages</h1>
+  <% if (unreadMessages > 0) { %>
+    <form method="post" action="/owner/messages/read-all">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn secondary" type="submit">Mark all as read</button>
+    </form>
+  <% } %>
+</div>
+<p class="slate small">Written in the contact form on the Liaisa home page. Every message is kept here, whether or not the email reached you.</p>
+<% if (messages.length === 0) { %>
+  <div class="card"><p>No messages yet. When someone writes through the contact form, it shows up here.</p></div>
+<% } else { %>
+  <ul class="messages">
+    <% messages.forEach(function (m) { var st = statusOf(m); %>
+      <li class="card message<%= m.readAt ? '' : ' message--new' %>">
+        <div class="message__head">
+          <strong><%= m.name %></strong>
+          <% if (!m.readAt) { %><span class="chip tone-needs">New</span><% } %>
+          <span class="chip tone-<%= st[0] %>"><%= st[1] %></span>
+        </div>
+        <p class="slate small"><a href="mailto:<%= m.email %>"><%= m.email %></a> · <%= timeAgo(m.createdAt, now) %></p>
+        <p class="message__body"><%= m.message %></p>
+        <% if (m.emailStatus === 'failed' && m.emailError) { %><p class="slate small">Why: <%= m.emailError %></p><% } %>
+        <% if (!m.readAt) { %>
+          <form method="post" action="/owner/messages/<%= m.id %>/read">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="btn text" type="submit">Mark as read</button>
+          </form>
+        <% } %>
+      </li>
+    <% }) %>
+  </ul>
+<% } %>
+<%- include('../partials/owner-close') %>

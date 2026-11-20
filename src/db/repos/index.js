@@ -2,6 +2,7 @@
 // Data resets on restart until MySQL repos replace these. `scope.seq` (from the registry) shares id counters
 // across businesses, so an id from another business does not exist here at all.
 import { createBusinessSettingsStore } from './businessSettings.js';
+import { createContactMessageStore } from './contactMessages.js';
 import { createPricingConfigStore } from './pricingConfigs.js';
 import { createEnquiryStore } from './enquiries.js';
 import { createEstimateStore } from './estimates.js';
@@ -36,6 +37,7 @@ export function createRepos(business = {}, ctx = {}) {
     discoveryRuns: createDiscoveryRunStore(scope),
     activity: createActivityStore(scope),
     usedLinks: createUsedLinkStore(),
+    contactMessages: createContactMessageStore(),
   };
   // name and city read live from this business's settings, so a rename on Setup shows everywhere.
   Object.defineProperties(meta, {

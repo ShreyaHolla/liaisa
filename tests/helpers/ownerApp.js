@@ -4,7 +4,6 @@ import { createApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
 import { createRegistry } from '../../src/db/registry.js';
 import { createMockClient } from '../../src/ai/mockClient.js';
-import { createContactMessageStore } from '../../src/db/repos/contactMessages.js';
 import { createFakeMailer } from '../../src/mail/fakeTransport.js';
 import { createEstimate } from '../../src/services/estimates/createEstimate.js';
 
@@ -28,7 +27,7 @@ export function setupOwner({ mail = 'fake', env = {}, steps } = {}) {
   const repos = registry.addDemo(config); // seeded; shares id counters with every business added later
   const mailer = mail === 'off' ? null : createFakeMailer({ fail: mail === 'fail' });
   const ai = createMockClient(steps ? { steps } : {});
-  const app = createApp(config, { contacts: createContactMessageStore(), registry, mailer, ai });
+  const app = createApp(config, { registry, mailer, ai });
   return { app, repos, registry, mailer, config, ai };
 }
 

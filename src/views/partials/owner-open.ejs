@@ -15,6 +15,9 @@
         </a>
       <% }) %>
     </nav>
+    <% if (typeof showMessages !== 'undefined' && showMessages) { %>
+      <nav aria-label="Messages"><a href="/owner/messages"<%- active === 'messages' ? ' aria-current="page"' : '' %>><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Messages<% if (unreadMessages > 0) { %><span class="count" aria-label="<%= unreadMessages %> unread"><%= unreadMessages %></span><% } %></a></nav>
+    <% } %>
     <div class="spacer"></div>
     <% if (typeof owner !== 'undefined' && owner) { %><p class="biz-name sidebar__email"><%= owner.email %></p><% } %>
     <form method="post" action="/owner/logout">

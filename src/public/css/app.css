@@ -399,3 +399,11 @@ details.edit summary { cursor: pointer; color: var(--plum); font-weight: 600; mi
 .account__actions form { margin: 0; }
 .account__actions .btn { width: 100%; }
 .sidebar .sidebar__email { margin: 0 0 var(--s-2); word-break: break-all; }
+
+/* Owner Messages */
+.messages { list-style: none; margin: var(--s-4) 0 0; padding: 0; display: grid; gap: var(--s-3); }
+.message--new { border-color: var(--plum); }
+.message__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.message__body { white-space: pre-wrap; overflow-wrap: anywhere; margin: var(--s-2) 0; }
+.account__msgs { margin: var(--s-3) 0; }
+.tab-account .count { margin-left: var(--s-1); }

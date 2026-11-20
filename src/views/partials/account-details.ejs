@@ -3,6 +3,9 @@
 %>
 <p class="account__biz"><strong><%= businessName %></strong></p>
 <% if (acctEmail) { %><p class="slate small account__email"><%= acctEmail %></p><% } %>
+<% if (typeof showMessages !== 'undefined' && showMessages) { %>
+  <p class="account__msgs"><a href="/owner/messages">Messages<% if (unreadMessages > 0) { %> <span class="count" aria-label="<%= unreadMessages %> unread"><%= unreadMessages %></span><% } %></a></p>
+<% } %>
 <div class="account__actions">
   <a class="btn secondary" href="/owner/setup">Setup</a>
   <form method="post" action="/owner/logout">

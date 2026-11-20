@@ -86,8 +86,12 @@ paths:
       tags: [contact]
       summary: Send a contact-form message to the business mailbox (F2)
       description: |
-        Saves to contact_messages, then emails OWNER_EMAIL with Reply-To = visitor.
-        A failed send still returns 200 (message saved with email_status=failed, shown on dashboard).
+        Saves to the demo business's contact messages FIRST (status `pending`, or `skipped` when email is off),
+        then tries to email OWNER_EMAIL with Reply-To = visitor. The reply waits at most about 4 seconds for the
+        mail server; a slower send finishes in the background and sets the status (`accepted` or `failed`).
+        A failed send still returns 200 (the message is saved; the owner sees "Email not delivered" on
+        /owner/messages). The log holds only the error code and a short reason, never the message or SMTP text.
+        200 is returned only once the message is saved. A failed save is a 500.
         Honeypot filled → return 200 `{ok:true}` but save and send nothing (TC-CON-03).
       requestBody:
         required: true
@@ -619,6 +623,42 @@ paths:
             image/svg+xml:
               schema: { type: string }
         '302': { description: Not logged in, redirect to /owner/login }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /owner/messages:
+    get:
+      tags: [owner]
+      summary: Messages page. Every contact-form message, newest first, with email status and unread marks
+      description: |
+        Demo business only (the landing-page form belongs to it); any other business gets 404.
+        Status chips: Email sent (`accepted`), Email not delivered (`failed`), Email off (`skipped`),
+        Sending email… (`pending`). The Account tab, sheet and sidebar show the unread count.
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: HTML page }
+        '302': { description: Not logged in, redirect to /owner/login }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /owner/messages/{id}/read:
+    post:
+      tags: [owner]
+      summary: Mark one message as read. Redirects (303) to /owner/messages
+      security: [{ cookieAuth: [] }, { csrf: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '303': { description: Redirect to /owner/messages }
+        '403': { description: Missing or wrong CSRF token }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /owner/messages/read-all:
+    post:
+      tags: [owner]
+      summary: Mark every message as read. Redirects (303) to /owner/messages
+      security: [{ cookieAuth: [] }, { csrf: [] }]
+      responses:
+        '303': { description: Redirect to /owner/messages }
+        '403': { description: Missing or wrong CSRF token }
         '404': { $ref: '#/components/responses/NotFound' }
 
   /owner/follow-ups:

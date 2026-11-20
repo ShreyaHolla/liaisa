@@ -48,9 +48,9 @@
         });
       })
       .then(function (r) {
-        if (r.status === 200) {
+        if (r.status === 200 && r.data && r.data.ok) {
           form.reset();
-          show("Thanks for writing. We'll reply by email.", 'ok');
+          show("Thanks, we got your message. We'll reply by email.", 'ok');
           return;
         }
         var error = (r.data && r.data.error) || {};
