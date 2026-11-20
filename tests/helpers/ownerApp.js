@@ -18,17 +18,19 @@ export const OWNER_EMAIL = 'owner@mehfilkitchen.example';
  * Fresh seeded app with the owner area on. `mail`: 'fake' (default) injects a recording mailer,
  * 'fail' one that rejects every send, 'off' none (MAIL_ENABLED=false).
  */
-export function setupOwner({ mail = 'fake' } = {}) {
+export function setupOwner({ mail = 'fake', env = {} } = {}) {
   const config = loadConfig({
     NODE_ENV: 'test', OWNER_PASSWORD_HASH: HASH, SESSION_SECRET: 'x'.repeat(48),
     BASE_URL: 'https://liaisa.co.in', MAIL_FROM, OWNER_EMAIL,
     ...(mail === 'off' ? {} : { MAIL_ENABLED: 'true', SMTP_HOST: 'smtp.test', SMTP_USER: 'u', SMTP_PASS: 'p' }),
+    ...env,
   });
   const repos = createRepos();
   seed(repos);
   const mailer = mail === 'off' ? null : createFakeMailer({ fail: mail === 'fail' });
-  const app = createApp(config, { contacts: createContactMessageStore(), repos, mailer, ai: createMockClient() });
-  return { app, repos, mailer, config };
+  const ai = createMockClient();
+  const app = createApp(config, { contacts: createContactMessageStore(), repos, mailer, ai });
+  return { app, repos, mailer, config, ai };
 }
 
 const cookieOf = (res) => /liaisa\.sid=[^;]+/.exec((res.headers['set-cookie'] ?? []).join(';'))?.[0];

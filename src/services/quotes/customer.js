@@ -67,9 +67,10 @@ export async function askQuestion(deps, token, text) {
 }
 
 /** Decline: enquiry lost, reminders cancelled. Declining again changes nothing. */
-export function declineQuote(deps, token, reason) {
+export function declineQuote(deps, token, reason, { doNotContact = false } = {}) {
   const { repos } = deps;
   const { enquiry } = findQuote(deps, token); // declining stays possible after expiry
+  if (doNotContact && ['lost', ...OPEN].includes(enquiry.status)) repos.enquiries.update(enquiry.id, { doNotContact: true });
   if (enquiry.status === 'lost') return { enquiryStatus: 'lost', message: 'Declined.' };
   if (!OPEN.includes(enquiry.status)) throw new ConflictError('This quote is no longer open.');
   repos.enquiries.update(enquiry.id, { status: 'lost' });

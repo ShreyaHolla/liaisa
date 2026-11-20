@@ -33,7 +33,7 @@ export function createApp(config, deps = buildDeps(config)) {
   app.use(contactRoutes({ store: deps.contacts, mailer: deps.mailer, config }));
   app.use(enquiryRoutes({ repos: deps.repos, ai: deps.ai, config, mailer: deps.mailer }));
   app.use(quoteRoutes({ repos: deps.repos, config, mailer: deps.mailer }));
-  app.use('/owner', config.ownerEnabled ? ownerRoutes({ config, repos: deps.repos, mailer: deps.mailer }) : ownerDisabled);
+  app.use('/owner', config.ownerEnabled ? ownerRoutes({ config, repos: deps.repos, mailer: deps.mailer, ai: deps.ai }) : ownerDisabled);
 
   app.use((req, res) => {
     res.status(404).type('text/plain').send('Not found');

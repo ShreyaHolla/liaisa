@@ -6,6 +6,7 @@ import { csrf, newCsrfToken } from '../middleware/csrf.js';
 import { errorBody } from '../middleware/errors.js';
 import { ownerEnquiryRoutes } from './ownerEnquiries.js';
 import { ownerSetupRoutes } from './ownerSetup.js';
+import { ownerClientRoutes } from './ownerClients.js';
 
 // Owner pages default to HTML: JSON only when the client explicitly prefers it.
 const wantsJson = (req) => req.accepts(['html', 'json']) === 'json';
@@ -38,7 +39,7 @@ function loginLimiter(renderLogin) {
   });
 }
 
-export function ownerRoutes({ config, repos, mailer = null }) {
+export function ownerRoutes({ config, repos, mailer = null, ai = null }) {
   const router = Router();
 
   // Sessions live in MemoryStore on purpose: one demo process, and the demo data is in
@@ -105,6 +106,7 @@ export function ownerRoutes({ config, repos, mailer = null }) {
 
   router.use(ownerEnquiryRoutes({ repos, config, mailer }));
   router.use(ownerSetupRoutes({ repos, config }));
+  router.use(ownerClientRoutes({ repos, config, ai, mailer }));
   router.post('/logout', (req, res, next) => {
     req.session.destroy((err) => {
       if (err) return next(err);

@@ -165,3 +165,8 @@ dialog p { margin-top: 0; font-size: var(--t-md); }
 /* M8-lite: follow-up panel */
 .followup { margin-bottom: var(--s-5); }
 .draft { margin: 0 0 var(--s-3); padding-left: var(--s-3); border-left: 3px solid var(--plum); }
+
+/* M10-lite: Client Finder (a later UI pass will restyle this) */
+.tabs { display: flex; gap: var(--s-4); margin: var(--s-4) 0 var(--s-2); border-bottom: 1px solid var(--line); }
+.tabs a { padding: var(--s-3) var(--s-2); color: var(--plum); text-decoration: none; min-height: 44px; box-sizing: border-box; }
+.tabs a[aria-current="page"] { font-weight: 600; border-bottom: 3px solid var(--plum); }

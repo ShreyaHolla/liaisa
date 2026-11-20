@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Message to <%= draft.name %> · <%= businessName %></title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <main class="wide">
+    <a class="back" href="/owner/clients?tab=<%= draft.subjectType === 'lead' ? 'leads' : 'reconnect' %>">← Client Finder</a>
+    <h1>Message to <%= draft.name %></h1>
+    <p class="slate">Why now: <%= draft.reason %> · By <%= draft.channel === 'whatsapp' ? 'WhatsApp' : 'email' %></p>
+    <% if (notice) { %>
+      <p class="banner tone-<%= notice[0] === 'ok' ? 'done' : 'problem' %>" role="<%= notice[0] === 'ok' ? 'status' : 'alert' %>"><%= notice[1] %></p>
+    <% } %>
+    <% var done = ['sent', 'opened', 'sending', 'discarded'].includes(draft.status); %>
+
+    <% if (done) { %>
+      <p class="banner tone-done" role="status"><%= draft.status === 'opened' ? 'Opened in WhatsApp. Tap Send there to deliver it.' : draft.status === 'sent' ? 'Sent.' : draft.status === 'sending' ? 'Sending…' : 'This draft was discarded.' %></p>
+      <blockquote class="draft"><%= draft.message %></blockquote>
+    <% } else { %>
+      <p class="slate small"><%= draft.source === 'ai' ? 'Written by Liaisa from the facts we hold. Check it before you send.' : 'This is the standard message. Edit it as you like.' %></p>
+      <% if (error) { %><p class="banner tone-problem" role="alert"><%= error %></p><% } %>
+      <form method="post" action="/owner/clients/drafts/<%= draft.id %>/send">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field">
+          <label for="message">Message</label>
+          <textarea id="message" name="message" rows="9" maxlength="1000"<%- error ? ' aria-invalid="true"' : '' %>><%= text !== null ? text : draft.message %></textarea>
+        </div>
+        <p class="slate small"><%= draft.channel === 'whatsapp' ? 'This opens WhatsApp with the message filled in. You tap Send there.' : 'This sends an email from your business mailbox.' %></p>
+        <div class="actions">
+          <button class="btn" type="submit"
+            data-confirm="Send this message to <%= draft.name.split(' ')[0] %> <%= draft.channel === 'whatsapp' ? 'on WhatsApp' : 'by email' %>?"
+            data-confirm-label="Approve &amp; send">Approve &amp; send</button>
+        </div>
+      </form>
+    <% } %>
+  </main>
+  <%- include('../partials/confirm-dialog') %>
+  <script src="/js/owner.js" defer></script>
+</body>
+</html>

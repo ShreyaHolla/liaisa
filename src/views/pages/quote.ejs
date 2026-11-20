@@ -48,6 +48,7 @@
           </form>
         </details>
         <form method="post" action="/q/<%= token %>/decline">
+          <label class="choice small"><input type="checkbox" name="doNotContact" value="on"> Please don’t contact me again about other work</label>
           <button class="btn danger-text" type="submit">Decline</button>
         </form>
       <% } %>

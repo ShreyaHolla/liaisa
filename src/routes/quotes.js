@@ -82,7 +82,8 @@ export function quoteRoutes({ repos, config, mailer = null }) {
   });
   action('decline', (req) => {
     const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, REASON_MAX) : '';
-    return declineQuote(deps(), req.params.token, reason || null);
+    const dnc = ['on', 'true', true].includes(req.body?.doNotContact);
+    return declineQuote(deps(), req.params.token, reason || null, { doNotContact: dnc });
   });
 
   return router;

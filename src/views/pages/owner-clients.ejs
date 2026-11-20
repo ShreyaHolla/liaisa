@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Client Finder · <%= businessName %></title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <main class="wide">
+    <a class="back" href="/owner">← Dashboard</a>
+    <h1>Client Finder</h1>
+    <p class="slate">Write a short message to someone you’d like to hear from again, or to a new contact. Liaisa drafts it. You edit it and press send. Nothing goes out by itself.</p>
+    <% if (notice) { %>
+      <p class="banner tone-<%= notice[0] === 'ok' ? 'done' : 'problem' %>" role="<%= notice[0] === 'ok' ? 'status' : 'alert' %>"><%= notice[1] %></p>
+    <% } %>
+
+    <nav class="tabs" aria-label="Client Finder">
+      <a href="/owner/clients?tab=reconnect"<%- tab === 'reconnect' ? ' aria-current="page"' : '' %>>Reconnect</a>
+      <a href="/owner/clients?tab=leads"<%- tab === 'leads' ? ' aria-current="page"' : '' %>>New leads</a>
+    </nav>
+    <p class="slate small">Drafts today: <%= draftsToday %> of <%= cap %></p>
+
+    <% if (tab === 'reconnect') { %>
+      <section class="section" aria-labelledby="rc-h">
+        <h2 id="rc-h">Past customers</h2>
+        <% if (rows.length === 0) { %>
+          <p class="slate">No past customers to reconnect with yet. People whose quote was accepted, declined, expired or went quiet will appear here.</p>
+        <% } else { %>
+          <table class="list">
+            <thead><tr><th scope="col">Customer</th><th scope="col">Last service</th><th scope="col">Outcome</th><th scope="col">Why now</th><th scope="col">Message</th></tr></thead>
+            <tbody>
+              <% rows.forEach(function (r) { %>
+                <tr>
+                  <td><strong><%= r.name %></strong><br><span class="slate small"><%= r.channel === 'whatsapp' ? 'WhatsApp' : 'Email' %></span></td>
+                  <td><%= r.service || '—' %><% if (r.eventDate) { %><br><span class="slate small"><%= formatDate(r.eventDate) %></span><% } %></td>
+                  <td><span class="badge tone-<%= r.outcome.code === 'accepted' ? 'done' : 'neutral' %>"><%= r.outcome.label %></span></td>
+                  <td><%= r.reason.text %><% if (r.lastContact) { %><br><span class="slate small">Last contacted <%= timeAgo(r.lastContact, now) %></span><% } %></td>
+                  <td>
+                    <% if (r.block) { %>
+                      <span class="slate small"><%= r.block.text %></span>
+                    <% } else { %>
+                      <div class="actions">
+                        <form method="post" action="/owner/clients/draft">
+                          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                          <input type="hidden" name="type" value="customer">
+                          <input type="hidden" name="ref" value="<%= r.key %>">
+                          <button class="btn secondary" type="submit">Draft message<span class="sr"> for <%= r.name %></span></button>
+                        </form>
+                        <form method="post" action="/owner/clients/dnc">
+                          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                          <input type="hidden" name="type" value="customer">
+                          <input type="hidden" name="ref" value="<%= r.key %>">
+                          <button class="btn danger-text" type="submit" data-confirm="Never contact <%= r.name %> again? No message can be drafted for them." data-confirm-label="Do not contact">Do not contact<span class="sr"> <%= r.name %></span></button>
+                        </form>
+                      </div>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } %>
+      </section>
+    <% } else { %>
+      <section class="section" aria-labelledby="add-h">
+        <h2 id="add-h">Add a lead</h2>
+        <form method="post" action="/owner/clients/leads" novalidate>
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div class="field">
+            <label for="lead-name">Name</label>
+            <input id="lead-name" name="name" type="text" maxlength="120" value="<%= values.name || '' %>"<%- errors.name ? ' aria-invalid="true" aria-describedby="err-name"' : '' %>>
+            <% if (errors.name) { %><p class="field-error" id="err-name"><%= errors.name %></p><% } %>
+          </div>
+          <div class="field">
+            <label for="lead-contact">Email or WhatsApp number</label>
+            <input id="lead-contact" name="contact" type="text" maxlength="200" value="<%= values.contact || '' %>"<%- errors.contact ? ' aria-invalid="true" aria-describedby="err-contact"' : '' %>>
+            <% if (errors.contact) { %><p class="field-error" id="err-contact"><%= errors.contact %></p><% } %>
+          </div>
+          <div class="field">
+            <label for="lead-note">Who are they? (one line)</label>
+            <input id="lead-note" name="note" type="text" maxlength="200" value="<%= values.note || '' %>"<%- errors.note ? ' aria-invalid="true" aria-describedby="err-note"' : '' %>>
+            <% if (errors.note) { %><p class="field-error" id="err-note"><%= errors.note %></p><% } %>
+          </div>
+          <button class="btn" type="submit">Add lead</button>
+        </form>
+      </section>
+
+      <section class="section" aria-labelledby="leads-h">
+        <h2 id="leads-h">Your leads</h2>
+        <% if (leads.length === 0) { %>
+          <p class="slate">No leads yet. Add someone you know or have met, one at a time.</p>
+        <% } else { %>
+          <table class="list">
+            <thead><tr><th scope="col">Name</th><th scope="col">Contact</th><th scope="col">Note</th><th scope="col">Message</th></tr></thead>
+            <tbody>
+              <% leads.forEach(function (l) { %>
+                <tr>
+                  <td><strong><%= l.name %></strong></td>
+                  <td><%= l.email || l.phone %><br><span class="slate small"><%= l.channel === 'whatsapp' ? 'WhatsApp' : 'Email' %></span></td>
+                  <td><%= l.note %><% if (l.lastContact) { %><br><span class="slate small">Last contacted <%= timeAgo(l.lastContact, now) %></span><% } %></td>
+                  <td>
+                    <% if (l.block) { %>
+                      <span class="slate small"><%= l.block.text %></span>
+                    <% } else { %>
+                      <div class="actions">
+                        <form method="post" action="/owner/clients/draft">
+                          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                          <input type="hidden" name="type" value="lead">
+                          <input type="hidden" name="ref" value="<%= l.id %>">
+                          <button class="btn secondary" type="submit">Draft message<span class="sr"> for <%= l.name %></span></button>
+                        </form>
+                        <form method="post" action="/owner/clients/dnc">
+                          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                          <input type="hidden" name="type" value="lead">
+                          <input type="hidden" name="ref" value="<%= l.id %>">
+                          <button class="btn danger-text" type="submit" data-confirm="Never contact <%= l.name %>? No message can be drafted for them." data-confirm-label="Do not contact">Do not contact<span class="sr"> <%= l.name %></span></button>
+                        </form>
+                      </div>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } %>
+      </section>
+    <% } %>
+
+    <section class="section" aria-labelledby="act-h">
+      <h2 id="act-h">Activity</h2>
+      <% if (activity.length === 0) { %>
+        <p class="slate">Nothing sent yet.</p>
+      <% } else { %>
+        <ul class="rows small">
+          <% activity.forEach(function (a) { %><li><%= a.name %> · <%= a.channel === 'whatsapp' ? 'WhatsApp' : 'email' %> · <%= a.status %> · <%= timeAgo(a.at, now) %></li><% }) %>
+        </ul>
+      <% } %>
+    </section>
+  </main>
+  <%- include('../partials/confirm-dialog') %>
+  <script src="/js/owner.js" defer></script>
+</body>
+</html>

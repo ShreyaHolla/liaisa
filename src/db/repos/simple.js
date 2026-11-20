@@ -54,7 +54,7 @@ export function createOutreachStore() {
     enums: {
       subjectType: ['customer', 'lead'],
       channel: ['email', 'whatsapp'],
-      status: ['draft', 'sending', 'sent', 'opened', 'failed'],
+      status: ['draft', 'sending', 'sent', 'opened', 'failed', 'discarded'],
     },
     defaults: { enquiryId: null, leadId: null, sentAt: null, source: 'ai' },
   });

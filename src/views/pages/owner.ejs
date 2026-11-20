@@ -11,6 +11,7 @@
     <header class="top">
       <p class="brand"><%= businessName %></p>
       <nav class="top-nav" aria-label="Owner">
+        <a href="/owner/clients">Client Finder</a>
         <a href="/owner/setup">Business setup</a>
         <form method="post" action="/owner/logout">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
