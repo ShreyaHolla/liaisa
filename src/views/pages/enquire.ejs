@@ -82,6 +82,7 @@
       <% } else if (view === 'fallback') { %>
         <% const pre = prefill || {}; const preAddons = [].concat(pre.addon_ids || []); const known = areas.includes(pre.location); %>
         <h1 tabindex="-1" data-focus>Tell us a few details</h1>
+        <% if (message) { %><p class="notice" role="status"><%= message %></p><% } %>
         <form method="post" action="<%= base %>/api/enquiries/<%= publicId %>/form" class="card" data-enhance novalidate>
           <div class="field">
             <label for="service_id">Service</label>

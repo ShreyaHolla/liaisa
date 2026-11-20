@@ -17,5 +17,6 @@ export const STARTER_PRICING = {
 export const starterSettings = ({ name, city, ownerEmail }) => ({
   businessName: name, tagline: '', currencySymbol: '₹', whatsappNumber: null, city,
   bulkApproveLimit: null, autoApprove: false, followupAfterDays: 2,
+  onboarding: true, // shows the "Set your prices, share your link" checklist until the first save on Setup
   ownerEmail, followupRulesJson: { steps: [{ step: 1, afterDays: 2 }, { step: 2, afterDays: 5 }] }, templatesJson: {},
 });

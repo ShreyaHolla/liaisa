@@ -1,6 +1,7 @@
 // The agent loop (PRD §6.4). One call = one customer turn.
 // Claude only talks through tools. The server validates everything, recomputes the estimate
 // from the approved rate card, and never trusts a number or price from the model.
+import { RESTING_TEXT } from '../tenants/limits.js';
 import { ValidationError } from '../../errors.js';
 import { computeCostUsd } from '../../ai/cost.js';
 import { calculateEstimate } from '../pricing/calculateEstimate.js';
@@ -89,13 +90,14 @@ export async function runTurn(deps, enquiryId, customerText) {
   let invalid = 0;
   let apiErrors = 0;
 
-  const fallback = () => {
+  // `why` is a guard reason. A budget cap (this business's or the whole platform's) gets a friendly line: the form still works.
+  const fallback = (why = null) => {
     repos.enquiries.update(enquiryId, {
       status: 'needs_owner',
       requirementsJson: known,
       aiState: { history, questionsAsked: state.questionsAsked, requirements: known },
     });
-    return { outcome: 'fallback', prefill: known };
+    return { outcome: 'fallback', prefill: known, ...(['daily_cap', 'global_cap'].includes(why) ? { message: RESTING_TEXT } : {}) };
   };
 
   const logCall = (resp, latencyMs, err) => {
@@ -115,7 +117,8 @@ export async function runTurn(deps, enquiryId, customerText) {
 
   for (;;) {
     const enquiry = repos.enquiries.get(enquiryId);
-    if (checkGuards({ config, repos, enquiry, now: now() })) return fallback();
+    const blocked = checkGuards({ config, repos, enquiry, now: now() });
+    if (blocked) return fallback(blocked);
     // Count the request BEFORE the call so a crash mid-call still counts (TC-AGT-15).
     repos.enquiries.update(enquiryId, { aiRequestsUsed: enquiry.aiRequestsUsed + 1 });
 

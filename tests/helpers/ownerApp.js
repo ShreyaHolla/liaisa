@@ -2,8 +2,7 @@ import request from 'supertest';
 import bcrypt from 'bcryptjs';
 import { createApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
-import { createRepos } from '../../src/container.js';
-import { seed } from '../../src/seed.js';
+import { createRegistry } from '../../src/db/registry.js';
 import { createMockClient } from '../../src/ai/mockClient.js';
 import { createContactMessageStore } from '../../src/db/repos/contactMessages.js';
 import { createFakeMailer } from '../../src/mail/fakeTransport.js';
@@ -25,12 +24,20 @@ export function setupOwner({ mail = 'fake', env = {}, steps } = {}) {
     ...(mail === 'off' ? {} : { MAIL_ENABLED: 'true', SMTP_HOST: 'smtp.test', SMTP_USER: 'u', SMTP_PASS: 'p' }),
     ...env,
   });
-  const repos = createRepos();
-  seed(repos);
+  const registry = createRegistry({ maxBusinesses: config.maxBusinesses });
+  const repos = registry.addDemo(config); // seeded; shares id counters with every business added later
   const mailer = mail === 'off' ? null : createFakeMailer({ fail: mail === 'fail' });
   const ai = createMockClient(steps ? { steps } : {});
-  const app = createApp(config, { contacts: createContactMessageStore(), repos, mailer, ai });
-  return { app, repos, mailer, config, ai };
+  const app = createApp(config, { contacts: createContactMessageStore(), registry, mailer, ai });
+  return { app, repos, registry, mailer, config, ai };
+}
+
+export const CHEAP_HASH = bcrypt.hashSync(PASSWORD, 4);
+
+/** Another business with its owner, made straight in the registry (the signup route itself uses bcrypt cost 12). */
+export function addBusiness(registry, { name = 'Spice Route', email = 'owner@spiceroute.example', password = PASSWORD, city = 'Pune' } = {}) {
+  const { repos, owner } = registry.signup({ businessName: name, ownerName: 'Test Owner', email, passwordHash: bcrypt.hashSync(password, 4), city });
+  return { repos, owner, email, password };
 }
 
 const cookieOf = (res) => /liaisa\.sid=[^;]+/.exec((res.headers['set-cookie'] ?? []).join(';'))?.[0];
