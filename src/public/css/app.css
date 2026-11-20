@@ -147,3 +147,17 @@ dialog { border: 1px solid var(--line); border-radius: var(--r-sm); box-shadow: 
 dialog::backdrop { background: rgb(30 26 36 / 40%); }
 dialog p { margin-top: 0; font-size: var(--t-md); }
 @media (prefers-reduced-motion: no-preference) { dialog[open] { animation: fade 120ms ease-out; } @keyframes fade { from { opacity: 0; } } }
+
+/* M7b: business setup */
+.top-nav { display: flex; align-items: center; gap: var(--s-4); }
+.top-nav a { color: var(--plum); }
+.top-nav form { margin: 0; }
+.setup fieldset { margin: 0 0 var(--s-5); padding: var(--s-4); background: var(--white); border: 1px solid var(--line); border-radius: var(--r-sm); }
+.setup legend { color: var(--plum); font-size: var(--t-md); padding: 0 var(--s-2); }
+.grid-row { display: grid; gap: var(--s-3); grid-template-columns: 1fr 1fr; padding: var(--s-3) 0; border-top: 1px solid var(--line); }
+.grid-row:first-of-type { border-top: 0; }
+.grid-row .wide2 { grid-column: 1 / -1; }
+@media (min-width: 40rem) { .grid-row.svc { grid-template-columns: 2fr 1fr 1fr 1fr 2fr auto; align-items: end; } .grid-row.area { grid-template-columns: 3fr 1fr auto; align-items: end; } .grid-row .wide2 { grid-column: auto; } }
+.grid-row .field { margin: 0; }
+.remove { display: flex; align-items: center; gap: var(--s-2); min-height: 44px; font-size: var(--t-sm); color: var(--rose); margin: 0; }
+.remove input { width: auto; }

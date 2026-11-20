@@ -10,10 +10,13 @@
   <main class="wide" id="dash" data-sig="<%= JSON.stringify(summary.needsYou) %>">
     <header class="top">
       <p class="brand"><%= businessName %></p>
-      <form method="post" action="/owner/logout">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <button class="btn text" type="submit">Log out</button>
-      </form>
+      <nav class="top-nav" aria-label="Owner">
+        <a href="/owner/setup">Business setup</a>
+        <form method="post" action="/owner/logout">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="btn text" type="submit">Log out</button>
+        </form>
+      </nav>
     </header>
     <h1>Hello, <%= businessName %></h1>
     <% if (notice) { %>

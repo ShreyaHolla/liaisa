@@ -1,0 +1,135 @@
+<%
+  var fe = function (key) { return errors[key] ? '<p class="field-error" id="err-' + key.replace(/\./g, '-') + '">' + errors[key].replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</p>' : ''; };
+  var bad = function (key) { return errors[key] ? ' aria-invalid="true" aria-describedby="err-' + key.replace(/\./g, '-') + '"' : ''; };
+%>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Business setup · <%= businessName %></title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <main class="wide setup">
+    <a class="back" href="/owner">← Dashboard</a>
+    <h1>Business setup</h1>
+    <p class="slate">Changes apply to new enquiries. Quotes already made keep the numbers they were priced with.</p>
+    <% if (notice) { %><p class="banner tone-done" role="status"><%= notice[1] %></p><% } %>
+    <% if (Object.keys(errors).length) { %><p class="banner tone-problem" role="alert">Some details need another look. They are marked below.</p><% } %>
+    <% if (errors._form) { %><p class="banner tone-problem" role="alert"><%= errors._form %></p><% } %>
+
+    <form method="post" action="/owner/setup" novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <fieldset>
+        <legend>Your business</legend>
+        <div class="field">
+          <label for="businessName">Business name</label>
+          <input id="businessName" name="businessName" type="text" maxlength="120" required value="<%= v.businessName %>"<%- bad('businessName') %>>
+          <%- fe('businessName') %>
+        </div>
+        <div class="field">
+          <label for="tagline">Tagline (optional)</label>
+          <input id="tagline" name="tagline" type="text" maxlength="200" value="<%= v.tagline %>"<%- bad('tagline') %>>
+          <%- fe('tagline') %>
+        </div>
+        <div class="field">
+          <label for="currencySymbol">Currency symbol (display only)</label>
+          <input id="currencySymbol" name="currencySymbol" type="text" maxlength="3" value="<%= v.currencySymbol %>"<%- bad('currencySymbol') %>>
+          <%- fe('currencySymbol') %>
+        </div>
+        <div class="field">
+          <label for="whatsappNumber">WhatsApp number (optional)</label>
+          <input id="whatsappNumber" name="whatsappNumber" type="tel" maxlength="30" value="<%= v.whatsappNumber %>"<%- bad('whatsappNumber') %>>
+          <%- fe('whatsappNumber') %>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Services (up to <%= limits.services %>)</legend>
+        <% v.services.forEach(function (s, i) { %>
+          <div class="grid-row svc">
+            <input type="hidden" name="svcId" value="<%= s.id %>">
+            <div class="field wide2">
+              <label for="svcName<%= i %>">Name</label>
+              <input id="svcName<%= i %>" name="svcName" type="text" maxlength="80" value="<%= s.name %>"<%- bad('services.' + i + '.name') %>>
+              <%- fe('services.' + i + '.name') %>
+            </div>
+            <div class="field">
+              <label for="svcPrice<%= i %>">Price per unit (<%= v.currencySymbol %>)</label>
+              <input id="svcPrice<%= i %>" name="svcPrice" type="number" min="0" step="1" inputmode="numeric" value="<%= s.price %>"<%- bad('services.' + i + '.price') %>>
+              <%- fe('services.' + i + '.price') %>
+            </div>
+            <div class="field">
+              <label for="svcMin<%= i %>">Minimum</label>
+              <input id="svcMin<%= i %>" name="svcMin" type="number" min="1" step="1" inputmode="numeric" value="<%= s.minQty %>"<%- bad('services.' + i + '.minQty') %>>
+              <%- fe('services.' + i + '.minQty') %>
+            </div>
+            <div class="field">
+              <label for="svcMax<%= i %>">Maximum (optional)</label>
+              <input id="svcMax<%= i %>" name="svcMax" type="number" min="1" step="1" inputmode="numeric" value="<%= s.maxQty %>"<%- bad('services.' + i + '.maxQty') %>>
+              <%- fe('services.' + i + '.maxQty') %>
+            </div>
+            <div class="field">
+              <label for="svcUnit<%= i %>">Unit label</label>
+              <input id="svcUnit<%= i %>" name="svcUnit" type="text" maxlength="40" value="<%= s.unitLabel %>"<%- bad('services.' + i + '.unitLabel') %>>
+              <%- fe('services.' + i + '.unitLabel') %>
+            </div>
+            <label class="remove"><input type="checkbox" name="svcRemove" value="<%= i %>"> Remove<span class="sr"> service <%= i + 1 %></span></label>
+          </div>
+        <% }) %>
+        <%- fe('services') %>
+        <p class="slate small">Empty rows are ignored. Fill one in to add a service. Renaming keeps a service’s history.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Areas and travel fees (up to <%= limits.areas %>)</legend>
+        <% v.areas.forEach(function (a, i) { %>
+          <div class="grid-row area">
+            <div class="field">
+              <label for="areaName<%= i %>">Area</label>
+              <input id="areaName<%= i %>" name="areaName" type="text" maxlength="60" value="<%= a.name %>"<%- bad('areas.' + i + '.name') %>>
+              <%- fe('areas.' + i + '.name') %>
+            </div>
+            <div class="field">
+              <label for="areaFee<%= i %>">Travel fee (<%= v.currencySymbol %>)</label>
+              <input id="areaFee<%= i %>" name="areaFee" type="number" min="0" step="1" inputmode="numeric" value="<%= a.fee %>"<%- bad('areas.' + i + '.fee') %>>
+              <%- fe('areas.' + i + '.fee') %>
+            </div>
+            <label class="remove"><input type="checkbox" name="areaRemove" value="<%= i %>"> Remove<span class="sr"> area <%= i + 1 %></span></label>
+          </div>
+        <% }) %>
+        <%- fe('areas') %>
+      </fieldset>
+
+      <fieldset>
+        <legend>Surcharge and tax</legend>
+        <div class="field">
+          <label for="weekendPct">Weekend surcharge (%)</label>
+          <input id="weekendPct" name="weekendPct" type="number" min="0" max="100" step="any" inputmode="decimal" value="<%= v.weekendPct %>"<%- bad('weekendPct') %>>
+          <%- fe('weekendPct') %>
+        </div>
+        <div class="field">
+          <label for="taxPct">Tax (%)</label>
+          <input id="taxPct" name="taxPct" type="number" min="0" max="100" step="any" inputmode="decimal" value="<%= v.taxPct %>"<%- bad('taxPct') %>>
+          <%- fe('taxPct') %>
+        </div>
+      </fieldset>
+
+      <div class="actions">
+        <button class="btn" type="submit">Save changes</button>
+      </div>
+    </form>
+
+    <form method="post" action="/owner/setup/reset" class="section">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn danger-text" type="submit"
+        data-confirm="Reset to the demo business? Your name, services, areas and fees will be replaced with the Mehfil Kitchen defaults. Quotes already made keep their numbers."
+        data-confirm-label="Reset to demo business">Reset to demo business</button>
+    </form>
+  </main>
+  <%- include('../partials/confirm-dialog') %>
+  <script src="/js/owner.js" defer></script>
+</body>
+</html>

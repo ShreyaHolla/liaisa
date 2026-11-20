@@ -5,6 +5,7 @@ import { rateLimit } from 'express-rate-limit';
 import { csrf, newCsrfToken } from '../middleware/csrf.js';
 import { errorBody } from '../middleware/errors.js';
 import { ownerEnquiryRoutes } from './ownerEnquiries.js';
+import { ownerSetupRoutes } from './ownerSetup.js';
 
 // Owner pages default to HTML: JSON only when the client explicitly prefers it.
 const wantsJson = (req) => req.accepts(['html', 'json']) === 'json';
@@ -103,6 +104,7 @@ export function ownerRoutes({ config, repos, mailer = null }) {
   router.use(csrf);
 
   router.use(ownerEnquiryRoutes({ repos, config, mailer }));
+  router.use(ownerSetupRoutes({ repos, config }));
   router.post('/logout', (req, res, next) => {
     req.session.destroy((err) => {
       if (err) return next(err);
