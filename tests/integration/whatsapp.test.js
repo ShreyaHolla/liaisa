@@ -82,7 +82,7 @@ test('an email customer with a phone number also gets the WhatsApp button; witho
 test('the CSP lets the WhatsApp form redirect to wa.me; the WhatsApp POST needs a session and CSRF', async () => {
   const ctx = setupOwner();
   const home = await request(ctx.app).get('/');
-  assert.match(home.headers['content-security-policy'], /form-action 'self' https:\/\/wa\.me/);
+  assert.match(home.headers['content-security-policy'], /form-action 'self' https:\/\/wa\.me https:\/\/api\.whatsapp\.com https:\/\/web\.whatsapp\.com[;,]/);
   const e = makeEnquiry(ctx.repos, { channel: 'whatsapp' });
   assert.equal((await request(ctx.app).post(`/owner/enquiries/${e.id}/whatsapp`).type('form').send({})).status, 302);
   const o = await login(ctx.app);

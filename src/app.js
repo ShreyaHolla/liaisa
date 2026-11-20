@@ -20,10 +20,11 @@ export function createApp(config, deps = buildDeps(config)) {
   app.set('views', path.join(here, 'views'));
   app.disable('x-powered-by');
 
-  // form-action must allow wa.me: the owner's "Send on WhatsApp" form POST redirects there (F12).
+  // form-action must allow wa.me and the hosts it redirects to: Chrome checks the whole redirect
+  // chain for the owner's "Send on WhatsApp" form POST (F12).
   app.use(helmet({
     contentSecurityPolicy: {
-      directives: { ...helmet.contentSecurityPolicy.getDefaultDirectives(), 'form-action': ["'self'", 'https://wa.me'] },
+      directives: { ...helmet.contentSecurityPolicy.getDefaultDirectives(), 'form-action': ["'self'", 'https://wa.me', 'https://api.whatsapp.com', 'https://web.whatsapp.com'] },
     },
   }));
   app.use('/css', express.static(path.join(here, 'public', 'css')));
