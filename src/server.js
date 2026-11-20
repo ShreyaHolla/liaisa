@@ -10,6 +10,7 @@ try {
 }
 
 for (const w of config.warnings) console.warn(`WARNING: ${w}`);
+for (const n of config.notes) console.log(n);
 
 createApp(config).listen(config.port, () => {
   console.log(`Liaisa listening on port ${config.port} (${config.env})`);

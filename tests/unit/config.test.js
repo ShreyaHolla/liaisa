@@ -66,6 +66,8 @@ test('TC-REQ-07 production with enabled features and their secrets starts with n
     SMTP_USER: 'hello@example.test',
     SMTP_PASS: SECRET_S,
     OWNER_EMAIL: 'owner@example.test',
+    OWNER_PASSWORD_HASH: '$2b$04$' + 'a'.repeat(53),
+    SESSION_SECRET: 's'.repeat(40),
   });
   assert.equal(cfg.aiLive, true);
   assert.equal(cfg.mailEnabled, true);
@@ -88,4 +90,38 @@ test('config: development defaults to mock AI, no warnings', () => {
 
 test('config: invalid value is rejected without echoing the value', () => {
   throwsNaming({ PORT: 'not-a-port' }, 'PORT', 'not-a-port');
+});
+
+// --- Owner login gating (M4) ---
+const HASH = '$2b$04$' + 'a'.repeat(53);
+const SECRET = 's'.repeat(40);
+
+test('owner area is off when neither OWNER_PASSWORD_HASH nor SESSION_SECRET is set', () => {
+  const c = loadConfig({ NODE_ENV: 'development' });
+  assert.equal(c.ownerEnabled, false);
+  assert.deepEqual(c.notes, []);
+});
+
+test('owner area is on when both are set, with the in-memory sessions note', () => {
+  const c = loadConfig({ OWNER_PASSWORD_HASH: HASH, SESSION_SECRET: SECRET });
+  assert.equal(c.ownerEnabled, true);
+  assert.deepEqual(c.notes, ['Sessions are in memory; owners log in again after a restart.']);
+});
+
+test('only OWNER_PASSWORD_HASH set: refuses to start, naming SESSION_SECRET, never the hash', () => {
+  throwsNaming({ OWNER_PASSWORD_HASH: HASH }, 'SESSION_SECRET', HASH);
+});
+
+test('only SESSION_SECRET set: refuses to start, naming OWNER_PASSWORD_HASH, never the secret', () => {
+  throwsNaming({ SESSION_SECRET: SECRET }, 'OWNER_PASSWORD_HASH', SECRET);
+});
+
+test('a short SESSION_SECRET or a non-bcrypt hash is rejected without echoing the value', () => {
+  throwsNaming({ OWNER_PASSWORD_HASH: HASH, SESSION_SECRET: 'too-short-secret' }, 'SESSION_SECRET', 'too-short-secret');
+  throwsNaming({ OWNER_PASSWORD_HASH: 'plaintext-password-oops', SESSION_SECRET: SECRET }, 'OWNER_PASSWORD_HASH', 'plaintext-password-oops');
+});
+
+test('production without the owner variables warns instead of failing', () => {
+  const c = loadConfig({ NODE_ENV: 'production' });
+  assert.match(c.warnings.join('\n'), /owner area/);
 });

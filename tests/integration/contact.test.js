@@ -18,7 +18,7 @@ const config = loadConfig({
 // Fresh app (and so a fresh rate-limit counter) per test.
 function setup({ mailer = createFakeMailer() } = {}) {
   const store = createContactMessageStore();
-  const app = createApp(config, { store, mailer });
+  const app = createApp(config, { contacts: store, mailer });
   return { app, store, mailer };
 }
 

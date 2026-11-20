@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= businessName %> · Owner</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <main>
+    <header class="top">
+      <p class="brand"><%= businessName %></p>
+      <form method="post" action="/owner/logout">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn" type="submit">Log out</button>
+      </form>
+    </header>
+    <h1>Owner area</h1>
+    <p>You're logged in. The dashboard is coming soon.</p>
+  </main>
+</body>
+</html>

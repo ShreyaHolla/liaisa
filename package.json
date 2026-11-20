@@ -14,12 +14,15 @@
     "start": "node src/server.js",
     "test": "node scripts/test.js",
     "test:pricing": "node --test --experimental-test-coverage --test-coverage-include=src/services/pricing/*.js --test-coverage-branches=100 tests/unit/pricing.test.js",
+    "hash-password": "node scripts/hash-password.js",
     "package": "node scripts/package.js"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "ejs": "^7.0.2",
     "express": "^4.22.3",
     "express-rate-limit": "^8.7.5",
+    "express-session": "^1.19.0",
     "helmet": "^8.3.0",
     "nodemailer": "^10.6.0",
     "zod": "^4.6.7"
