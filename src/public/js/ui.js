@@ -62,6 +62,17 @@
   });
   if (location.hash) openDetails(location.hash.slice(1));
 
+  // Pause or play a looping animation: <button data-toggle-anim="id"> toggles .is-paused on that element.
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-toggle-anim]') : null;
+    if (!b) return;
+    var target = document.getElementById(b.getAttribute('data-toggle-anim'));
+    if (!target) return;
+    var paused = target.classList.toggle('is-paused');
+    b.setAttribute('aria-pressed', paused ? 'true' : 'false');
+    b.textContent = paused ? 'Play animation' : 'Pause animation';
+  });
+
   // "Sending…" on submit buttons, and no double submits (the server is idempotent too).
   document.addEventListener('submit', function (e) {
     var form = e.target;

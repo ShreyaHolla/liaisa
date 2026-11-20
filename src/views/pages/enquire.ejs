@@ -10,6 +10,7 @@
       <% if (view === 'start') { %>
         <h1 tabindex="-1" data-focus>Tell us what you need</h1>
         <form method="post" action="<%= base %>/api/enquiries" class="card" data-enhance novalidate>
+          <p class="tag-row"><span class="tag">Form</span> You fill this in. Liaisa may ask one follow-up question.</p>
           <div class="field">
             <label for="description">What do you need?</label>
             <textarea id="description" name="description" rows="5" maxlength="1000" data-count="count" placeholder="<%= example %>"<% if (errors.description) { %> aria-invalid="true" aria-describedby="error-description"<% } %>><%= values.description || '' %></textarea>
@@ -50,9 +51,10 @@
         <h1 tabindex="-1" data-focus>One more thing</h1>
         <div class="bubbles" role="log" aria-label="Your conversation">
           <p class="bubble you"><span class="who">You</span><%= rawText %></p>
-          <p class="bubble liaisa"><span class="who">Liaisa for <%= biz.businessName %></span><%= question %></p>
+          <p class="bubble liaisa"><span class="who">Liaisa for <%= biz.businessName %> <%- include('../partials/ai-badge') %></span><%= question %></p>
         </div>
         <form method="post" action="<%= base %>/api/enquiries/<%= publicId %>/reply" class="card" data-enhance novalidate>
+          <p class="tag-row"><span class="tag">Form</span> Your answer</p>
           <div class="field">
             <label for="answer">Your answer</label>
             <textarea id="answer" name="answer" rows="3" maxlength="1000"<% if (errors.answer) { %> aria-invalid="true" aria-describedby="error-answer"<% } %>><%= values.answer || '' %></textarea>
@@ -68,7 +70,7 @@
           <h1 tabindex="-1" data-focus>Thanks<%= firstName ? ', ' + firstName : '' %>. Your enquiry is with <%= biz.businessName %>.</h1>
           <% if (understood) { %>
             <div class="summary">
-              <strong>What we understood</strong>
+              <strong>What we understood <% if (aiSource) { %><%- include('../partials/ai-badge') %><% } else { %><span class="tag">Form</span><% } %></strong>
               <span><%= [understood.serviceName, understood.quantity ? understood.quantity + ' ' + (understood.unitNoun || 'guests') : '', fmtDate(understood.eventDate), understood.location].filter(Boolean).concat(understood.addonNames || []).join(' · ') %></span>
             </div>
           <% } %>
@@ -84,6 +86,7 @@
         <h1 tabindex="-1" data-focus>Tell us a few details</h1>
         <% if (message) { %><p class="notice" role="status"><%= message %></p><% } %>
         <form method="post" action="<%= base %>/api/enquiries/<%= publicId %>/form" class="card" data-enhance novalidate>
+          <p class="tag-row"><span class="tag">Form</span> Fixed fields. No AI here.</p>
           <div class="field">
             <label for="service_id">Service</label>
             <select id="service_id" name="service_id"<% if (errors.service_id) { %> aria-invalid="true" aria-describedby="error-service_id"<% } %>>
@@ -127,6 +130,7 @@
       <% } %>
     </div>
 
+    <%- include('../partials/legend') %>
     <footer class="slate small section">Powered by Liaisa</footer>
   </main>
   <script src="<%= asset('/js/ui.js') %>" defer></script>

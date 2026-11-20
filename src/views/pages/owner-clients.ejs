@@ -29,7 +29,7 @@
             <h3><strong><%= r.name %></strong> <span class="chip tone-<%= r.outcome.code === 'accepted' ? 'done' : 'neutral' %>"><%= r.outcome.label %></span></h3>
             <p class="slate small"><%= r.channel === 'whatsapp' ? 'WhatsApp' : 'Email' %></p>
             <p><%= r.service || '—' %><% if (r.eventDate) { %> <span class="slate small">· <%= formatDate(r.eventDate) %></span><% } %></p>
-            <p><span class="slate small">Why now:</span> <%= r.reason.text %><% if (r.lastContact) { %><br><span class="slate small">Last contacted <%= timeAgo(r.lastContact, now) %></span><% } %></p>
+            <p><span class="tag">Fixed rule</span> <span class="slate small">Why now:</span> <%= r.reason.text %><% if (r.lastContact) { %><br><span class="slate small">Last contacted <%= timeAgo(r.lastContact, now) %></span><% } %></p>
             <% if (r.block) { %>
               <p class="slate small"><%= r.block.text %></p>
             <% } else { %>
@@ -77,18 +77,19 @@
   </section>
 
   <section class="section" aria-labelledby="found-h">
-    <h2 id="found-h">Organisations found</h2>
+    <h2 id="found-h">Organisations found <%- include('../partials/ai-badge', { aiCaption: true }) %></h2>
     <% if (found.length === 0) { %>
       <div class="empty"><strong>Nothing yet.</strong>Press Find clients to look for organisations near you.</div>
     <% } else { %>
       <ul class="cards">
         <% found.forEach(function (l) { %>
           <li class="card"><div class="person">
-            <h3><%= l.name %> <span class="chip tone-<%= l.status === 'replied' ? 'done' : l.status === 'not_interested' ? 'neutral' : 'progress' %>"><%= STATUS[l.status] %></span></h3>
+            <h3><%= l.name %> <%- include('../partials/ai-badge') %> <span class="chip tone-<%= l.status === 'replied' ? 'done' : l.status === 'not_interested' ? 'neutral' : 'progress' %>"><%= STATUS[l.status] %></span></h3>
             <p class="slate small"><%= l.orgType %></p>
             <p><%= l.whyFit %></p>
+            <p class="slate small">Found and summarised by AI from a public web page. Check the source.</p>
             <p class="small">Source: <a href="<%= l.sourceUrl %>" target="_blank" rel="noopener noreferrer"><%= l.sourceDomain %></a></p>
-            <p class="small"><%= l.publicContact ? 'Contact: ' + l.publicContact : 'No public contact listed.' %></p>
+            <% if (l.publicContact) { %><p class="small">Contact: <%= l.publicContact %></p><% } %>
             <% if (l.lastContact) { %><p class="slate small">Last contacted <%= timeAgo(l.lastContact, now) %></p><% } %>
             <% if (l.block) { %><p class="slate small"><%= l.block.text %></p><% } %>
             <div class="actions">
@@ -126,6 +127,7 @@
   <section class="section" aria-labelledby="add-h">
     <h2 id="add-h">Add a lead</h2>
     <form method="post" action="/owner/clients/leads" class="card" novalidate>
+      <p class="tag-row"><span class="tag">Form</span> You type this in. No AI.</p>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="field">
         <label for="lead-name">Name</label>

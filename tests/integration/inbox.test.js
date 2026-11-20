@@ -606,7 +606,7 @@ test('the enquiry question screen is a chat: the customer’s message and Liaisa
   const ctx = await world();
   const res = await request(ctx.app).post('/b/mehfil-kitchen/api/enquiries').set('Accept', 'text/html').type('form').send({ name: 'Meera', channel: 'email', email: 'm@example.test', description: 'Veg lunch for 40 people please' });
   assert.match(res.text, /<p class="bubble you"><span class="who">You<\/span>Veg lunch for 40 people please<\/p>/);
-  assert.match(res.text, /<p class="bubble liaisa"><span class="who">Liaisa for Mehfil Kitchen<\/span>/);
+  assert.match(res.text, /<p class="bubble liaisa"><span class="who">Liaisa for Mehfil Kitchen <span class="ai-badge"[^>]*><span aria-hidden="true">✦<\/span> AI<span class="sr">/);
 });
 
 test('submit buttons say "Sending…" while busy (script) and the script is shared', () => {

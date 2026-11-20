@@ -303,3 +303,79 @@ details.edit summary { cursor: pointer; color: var(--plum); font-weight: 600; mi
 .share--hero { border: 2px solid var(--plum); background: var(--tint-progress-bg); margin-top: 0; margin-bottom: var(--s-5); }
 .share__lead { font-family: var(--serif); font-size: var(--t-md); color: var(--plum); margin-bottom: var(--s-3); }
 @media (min-width: 40rem) { .share { grid-template-columns: 1fr auto; align-items: start; } .share--hero .qr svg { width: 208px; height: 208px; } }
+
+/* ==========================================================================
+   M13: AI markers, "calculated by the server", the landing demo
+   ========================================================================== */
+/* AI badge: a sparkle plus the word AI (never the sparkle alone), plum. */
+.ai-badge { display: inline-flex; align-items: center; gap: 3px; padding: 1px var(--s-2); border-radius: 999px; background: var(--tint-progress-bg); color: var(--plum); border: 1px solid #cfc3dc; font: 600 var(--t-xs)/1.4 var(--font); letter-spacing: 0.02em; vertical-align: middle; white-space: nowrap; }
+.ai-caption { display: block; margin-top: var(--s-1); color: var(--slate); font-size: var(--t-xs); font-weight: 400; }
+/* Calculated amounts are jade; forms and fixed rules get a plain tag. */
+.calc-note { display: block; margin: var(--s-1) 0 0; color: var(--jade); font-size: var(--t-sm); font-weight: 500; }
+.calc-note::before { content: "✓ "; }
+.tag { display: inline-flex; align-items: center; padding: 1px var(--s-2); border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--white); color: var(--slate); font-size: var(--t-xs); font-weight: 500; line-height: 1.4; vertical-align: middle; white-space: normal; max-width: 100%; }
+.legend { margin: var(--s-5) 0 0; padding-top: var(--s-3); border-top: 1px solid var(--line); color: var(--slate); font-size: var(--t-sm); }
+.legend span { color: var(--plum); }
+.sheet tfoot td { color: var(--jade); }
+.approval__total { color: var(--jade); }
+.approval__total .calc-note { font-family: var(--font); font-size: var(--t-xs); text-align: right; }
+.who .ai-badge { margin-left: var(--s-1); opacity: 1; }
+.bubble.you .who { color: #fff; }
+.sheet .calc-note { margin-top: var(--s-2); }
+.tag-row { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); color: var(--slate); font-size: var(--t-sm); }
+
+/* Landing hero: copy on the left, a phone that plays one quote from start to finish on the right.
+   The base state IS the final frame (everything visible). Motion is added only when the visitor allows it. */
+.hero--split { display: grid; gap: var(--s-6); align-items: center; padding: var(--s-6) 0 var(--s-5); }
+@media (min-width: 64rem) { .hero--split { grid-template-columns: 1.1fr 0.9fr; gap: var(--s-7); padding: var(--s-7) 0; } }
+.hero--split .hero__copy h1 { max-width: 16ch; }
+.hero-demo { margin: 0; display: grid; justify-items: center; gap: var(--s-2); }
+.phone { width: 100%; max-width: 19rem; padding: 10px; border-radius: 36px; background: var(--ink); box-shadow: var(--lift); }
+.phone__screen { display: grid; align-content: start; gap: var(--s-2); min-height: 31rem; padding: var(--s-4) var(--s-3); border-radius: 28px; background: var(--cloud); overflow: hidden; }
+.demo-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 var(--s-1); color: var(--plum); font-weight: 600; font-size: var(--t-sm); }
+.demo-msg { margin: 0; padding: var(--s-2) var(--s-3); border-radius: var(--r-md); font-size: var(--t-sm); max-width: 88%; }
+.demo-msg--you { justify-self: end; background: var(--plum); color: var(--white); border-bottom-right-radius: var(--s-1); }
+.demo-msg--ai { justify-self: start; background: var(--white); border: 1px solid var(--line); border-bottom-left-radius: var(--s-1); }
+.demo-msg .who { display: block; margin-bottom: 2px; color: var(--slate); font-size: var(--t-xs); }
+.demo-quote { margin-top: var(--s-2); padding: var(--s-3); border-radius: var(--r-md); background: var(--white); border: 1px solid var(--line); font-size: var(--t-sm); }
+.demo-quote p { margin: 0; }
+.demo-quote .slate { font-size: var(--t-xs); }
+.demo-total { display: block; margin-top: var(--s-1); font-family: var(--serif); font-weight: 400; font-size: var(--t-lg); color: var(--jade); }
+.demo-owner { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-2) var(--s-3); border-radius: var(--r-md); background: var(--tint-progress-bg); color: var(--plum); font-size: var(--t-sm); font-weight: 600; }
+.demo-approve { position: relative; display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 var(--s-4); border-radius: var(--r-sm); background: var(--jade-dark); color: var(--white); font-weight: 600; }
+.demo-tap { position: absolute; right: 18px; top: 12px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--white); opacity: 0; }
+.demo-sent { display: flex; align-items: center; gap: var(--s-2); justify-content: center; padding: var(--s-2); border-radius: var(--r-md); background: var(--tint-done-bg); color: var(--tint-done-fg); font-weight: 600; font-size: var(--t-sm); }
+.demo-sent .tick { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--jade); color: var(--white); font-size: 0.8rem; }
+[data-toggle-anim] { display: none; }
+.js [data-toggle-anim] { display: inline-flex; }
+.steps li svg { width: 32px; height: 32px; stroke: var(--plum); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.steps .step-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--tint-progress-bg); }
+.steps li::before { display: none; }
+.steps li { grid-template-columns: 40px 1fr; }
+.steps .num { display: block; color: var(--slate); font-size: var(--t-xs); font-weight: 600; }
+@media (min-width: 40rem) { .steps li { grid-template-columns: 1fr; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-demo .s1 { animation: demo-s1 16s infinite both; }
+  .hero-demo .s2 { animation: demo-s2 16s infinite both; }
+  .hero-demo .s3 { animation: demo-s3 16s infinite both; }
+  .hero-demo .s4 { animation: demo-s4 16s infinite both; }
+  .hero-demo .s5 { animation: demo-s5 16s infinite both; }
+  .hero-demo .s6 { animation: demo-s6 16s infinite both; }
+  .hero-demo .demo-approve { animation: demo-press 16s infinite both; }
+  .hero-demo .demo-tap { animation: demo-ripple 16s infinite both; }
+  .hero-demo .demo-sent .tick { animation: demo-pop 16s infinite both; }
+  .hero-demo.is-paused *, .hero-demo.is-paused { animation-play-state: paused !important; }
+  @keyframes demo-s1 { 0%, 2% { opacity: 0; transform: translateY(10px); } 5%, 92% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
+  @keyframes demo-s2 { 0%, 14% { opacity: 0; transform: translateY(10px); } 18%, 92% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
+  @keyframes demo-s3 { 0%, 28% { opacity: 0; transform: translateY(10px); } 32%, 92% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
+  @keyframes demo-s4 { 0%, 40% { opacity: 0; transform: translateY(12px) scale(0.97); } 45%, 92% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
+  @keyframes demo-s5 { 0%, 56% { opacity: 0; transform: translateY(10px); } 60%, 92% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
+  @keyframes demo-s6 { 0%, 70% { opacity: 0; transform: translateY(10px); } 74%, 92% { opacity: 1; transform: none; } 97%, 100% { opacity: 0; } }
+  @keyframes demo-press { 0%, 64% { transform: none; background: var(--jade); } 66%, 68% { transform: scale(0.93); background: var(--jade-dark); } 71%, 100% { transform: none; background: var(--jade-dark); } }
+  @keyframes demo-ripple { 0%, 64% { opacity: 0; transform: scale(0.4); } 66% { opacity: 0.9; transform: scale(0.8); } 70%, 100% { opacity: 0; transform: scale(1.8); } }
+  @keyframes demo-pop { 0%, 73% { transform: scale(0.4); } 77% { transform: scale(1.25); } 80%, 100% { transform: scale(1); } }
+}
+@media (prefers-reduced-motion: reduce) { [data-toggle-anim], .js [data-toggle-anim] { display: none; } .demo-tap { display: none; } }
+.safe { grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+.steps li { align-content: start; }

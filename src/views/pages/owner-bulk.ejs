@@ -17,7 +17,7 @@
       </li>
     <% }) %>
   </ul>
-  <p class="small slate"><%= items.length %> quote<%= items.length === 1 ? '' : 's' %> · <%= sum %> in total</p>
+  <p class="small slate"><%= items.length %> quote<%= items.length === 1 ? '' : 's' %> · <%= sum %> in total <span class="calc-note">Calculated by the server</span></p>
   <form method="post" action="/owner/approve-clean" class="stack">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <% items.forEach(function (i) { %><input type="hidden" name="ids" value="<%= i.id %>"><% }) %>
