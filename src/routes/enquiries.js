@@ -10,10 +10,10 @@ import { startEnquiry, replyToEnquiry, submitForm, presentResult, understoodOf }
 
 const VALIDATION_TEXT = 'Please check the highlighted fields.';
 
-export function enquiryRoutes({ repos, ai, config }) {
+export function enquiryRoutes({ repos, ai, config, mailer = null }) {
   const router = Router();
   const body = [express.json({ limit: '20kb' }), express.urlencoded({ extended: false, limit: '20kb' })];
-  const deps = () => ({ repos, ai, config });
+  const deps = () => ({ repos, ai, config, mailer });
 
   /** View model for pages/enquire.ejs. */
   function model(over = {}) {

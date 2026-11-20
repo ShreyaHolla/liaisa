@@ -7,16 +7,63 @@
   <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
-  <main>
+  <main class="wide" id="dash" data-sig="<%= JSON.stringify(summary.needsYou) %>">
     <header class="top">
       <p class="brand"><%= businessName %></p>
       <form method="post" action="/owner/logout">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <button class="btn" type="submit">Log out</button>
+        <button class="btn text" type="submit">Log out</button>
       </form>
     </header>
-    <h1>Owner area</h1>
-    <p>You're logged in. The dashboard is coming soon.</p>
+    <h1>Hello, <%= businessName %></h1>
+    <% if (notice) { %>
+      <p class="banner tone-<%= notice[0] === 'ok' ? 'done' : 'problem' %>" role="<%= notice[0] === 'ok' ? 'status' : 'alert' %>"><%= notice[1] %></p>
+    <% } %>
+
+    <section class="section" aria-labelledby="needs-h">
+      <h2 id="needs-h">Needs you (<%= summary.needsYou.length %>)</h2>
+      <div class="panel">
+        <% if (summary.needsYou.length === 0) { %>
+          <p class="slate">Nothing needs you right now. New enquiries will appear here.</p>
+        <% } else { %>
+          <ul class="rows">
+            <% summary.needsYou.forEach(function (n) { %>
+              <li>
+                <span class="grow"><strong><%= n.customerName %></strong>
+                  <% if (n.what) { %><span class="what"> · <%= n.what %></span><% } %></span>
+                <span class="badge <%= n.kind === 'send_failed' ? 'tone-problem' : 'tone-needs' %>"><%= n.label %></span>
+                <% if (n.total !== undefined) { %><span><%= inr(n.total) %></span><% } %>
+                <a class="btn secondary" href="/owner/enquiries/<%= n.enquiryId %>"><%= n.kind === 'customer_question' ? 'Reply' : n.kind === 'send_failed' ? 'Retry sending' : 'Review' %><span class="sr"> for <%= n.customerName %></span></a>
+              </li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </div>
+    </section>
+
+    <p class="slate small">This week: <%= summary.week.enquiries %> enquiries · <%= summary.week.quotesSent %> quotes sent · <%= summary.week.accepted %> accepted</p>
+
+    <section class="section" aria-labelledby="all-h">
+      <h2 id="all-h">All enquiries</h2>
+      <% if (summary.all.length === 0) { %>
+        <p class="slate">No enquiries yet. Share your enquiry link: <a href="/enquire"><%= baseUrl.replace(/\/$/, '') %>/enquire</a></p>
+      <% } else { %>
+        <table class="list">
+          <thead><tr><th scope="col">Name</th><th scope="col">What</th><th scope="col">Status</th><th scope="col">Updated</th></tr></thead>
+          <tbody>
+            <% summary.all.forEach(function (e) { %>
+              <tr>
+                <td><a href="/owner/enquiries/<%= e.id %>"><%= e.name %></a></td>
+                <td><%= e.what %></td>
+                <td><span class="badge tone-<%= e.tone %>"><%= e.label %></span></td>
+                <td><%= e.updated %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </section>
   </main>
+  <script src="/js/owner.js" defer></script>
 </body>
 </html>

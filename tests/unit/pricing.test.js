@@ -224,3 +224,30 @@ test('money helpers: half-up rounding at the boundary', () => {
   assert.equal(percentOf(1000, 5), 100); // 0.50 -> 1
   assert.equal(percentOf(900, 5), 0); // 0.45 -> 0
 });
+
+// Owner discount (M7): after weekend and travel, before tax.
+const WEEKEND_WHITEFIELD = { service_id: 'veg_buffet', quantity: 40, event_date: '2026-12-12', location: 'Whitefield' };
+
+test('discount comes off after weekend and travel, and tax applies to the discounted amount', () => {
+  const e = calculateEstimate(config, WEEKEND_WHITEFIELD, { discount: { amount: 1300, reason: 'Repeat customer' } });
+  assert.deepEqual(kinds(e), ['service', 'weekend', 'travel', 'discount', 'tax']);
+  assert.equal(amount(e, 'discount'), -1300);
+  assert.equal(e.lineItems.find((l) => l.kind === 'discount').reason, 'Repeat customer');
+  assert.equal(e.subtotal, 20000); // 18000 + 1800 + 1500 - 1300
+  assert.equal(e.tax, 1000);
+  assert.equal(e.total, 21000);
+  assert.equal(sumLines(e), e.total);
+});
+
+test('a discount equal to the pre-tax amount is allowed (total 0); one rupee more is rejected', () => {
+  const req = { service_id: 'veg_buffet', quantity: 40, event_date: '2026-12-15', location: 'Indiranagar' };
+  const free = calculateEstimate(config, req, { discount: { amount: 18000, reason: 'Gift' } });
+  assert.equal(free.total, 0);
+  assert.throws(() => calculateEstimate(config, req, { discount: { amount: 18001, reason: 'Gift' } }), ValidationError);
+});
+
+test('discount must be a positive whole number with a reason', () => {
+  for (const bad of [{ amount: 0, reason: 'x' }, { amount: 10.5, reason: 'x' }, { amount: -5, reason: 'x' }, { amount: 100, reason: '  ' }, { amount: 100 }]) {
+    assert.throws(() => calculateEstimate(config, WEEKEND_WHITEFIELD, { discount: bad }), ValidationError);
+  }
+});

@@ -32,3 +32,18 @@ export function enquiryLimiter({ limit, html }) {
     },
   });
 }
+
+/** Quote page: 60 requests per IP per 15 minutes, so tokens can't be guessed by brute force. */
+export function quoteLimiter() {
+  return rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 60,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler: (req, res) => {
+      const text = 'Too many requests. Wait a few minutes, then try again.';
+      if (wantsJson(req)) return res.status(429).json(errorBody('rate_limited', text));
+      return res.status(429).type('text/plain').send(text);
+    },
+  });
+}

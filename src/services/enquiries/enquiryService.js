@@ -4,6 +4,8 @@ import { calculateEstimate } from '../pricing/calculateEstimate.js';
 import { createEstimate } from '../estimates/createEstimate.js';
 import { runTurn } from '../agent/runTurn.js';
 import { normaliseRequirements } from '../agent/areas.js';
+import { notifyOwner } from '../quotes/mail.js';
+import { ownerReadyEmail } from '../quotes/messages.js';
 
 const clock = (deps) => (deps.now ?? (() => new Date()))();
 
@@ -11,6 +13,14 @@ function findOrFail(repos, publicId) {
   const enquiry = repos.enquiries.getByPublicId(publicId);
   if (!enquiry) throw new NotFoundError("We couldn't find that enquiry.");
   return enquiry;
+}
+
+/** Tell the owner an enquiry is ready for approval. Fire and forget: SMTP never slows or fails the customer's request. */
+function announceReady(deps, enquiryId) {
+  if (!deps.mailer) return;
+  const enquiry = deps.repos.enquiries.get(enquiryId);
+  const pricing = deps.repos.pricingConfigs.latestApproved().configJson;
+  notifyOwner(deps, enquiryId, ownerReadyEmail({ config: deps.config, enquiry, pricing })).catch(() => {});
 }
 
 export async function startEnquiry(deps, input) {
@@ -28,6 +38,7 @@ export async function startEnquiry(deps, input) {
     clock(deps),
   );
   const result = await runTurn(deps, created.id, input.description);
+  if (result.outcome === 'ready') announceReady(deps, created.id);
   return { enquiry: repos.enquiries.get(created.id), result };
 }
 
@@ -36,6 +47,7 @@ export async function replyToEnquiry(deps, publicId, answer) {
   const found = findOrFail(repos, publicId);
   if (found.status !== 'collecting') throw new ConflictError('This enquiry has already moved on.');
   const result = await runTurn(deps, found.id, answer);
+  if (result.outcome === 'ready') announceReady(deps, found.id);
   return { enquiry: repos.enquiries.get(found.id), result };
 }
 
@@ -70,6 +82,7 @@ export function submitForm(deps, publicId, reqs) {
   if (missing.length === 0) {
     createEstimate(repos, found.id, { now: clock(deps) });
     repos.enquiries.update(found.id, { status: 'awaiting_approval' });
+    announceReady(deps, found.id);
   }
   return { enquiry: repos.enquiries.get(found.id), result: { outcome: missing.length ? 'needs_owner' : 'ready' } };
 }

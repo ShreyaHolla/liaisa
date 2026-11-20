@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Your quote from <%= biz.businessName %></title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <main>
+    <article class="quote-sheet">
+      <p class="brand"><%= biz.businessName %></p>
+      <h1>Quote for <%= firstName %></h1>
+      <p class="slate">Valid until <%= validUntil %></p>
+
+      <%- include('../partials/quote-sheet', { rows: rows, total: total }) %>
+      <% if (note) { %><p><%= note %></p><% } %>
+
+      <ol class="journey" aria-label="Quote progress">
+        <li class="done">Asked<span class="sr"> done</span></li>
+        <li class="done">Quoted<span class="sr"> done</span></li>
+        <li class="<%= closed ? 'done' : 'current' %>">Your reply<span class="sr"> <%= closed ? 'done' : 'current' %></span></li>
+      </ol>
+
+      <% if (state === 'won') { %>
+        <p class="banner tone-done" role="status">Accepted. <%= biz.businessName %> will be in touch to confirm.</p>
+      <% } else if (state === 'lost') { %>
+        <p class="banner tone-neutral" role="status">You declined this quote. If you change your mind, contact <%= biz.businessName %>.</p>
+      <% } else if (expired) { %>
+        <p class="banner tone-needs" role="alert">This quote has expired. Please contact <%= biz.businessName %> for a new one.</p>
+      <% } else { %>
+        <% if (sent === 'question') { %>
+          <p class="banner tone-done" role="status">Question sent. <%= biz.businessName %> will reply to you.</p>
+        <% } %>
+        <form method="post" action="/q/<%= token %>/accept">
+          <button class="btn block" type="submit">Accept quote</button>
+        </form>
+        <details class="edit" <%= errors.message ? 'open' : '' %>>
+          <summary>Ask a question</summary>
+          <form method="post" action="/q/<%= token %>/question">
+            <div class="field">
+              <label for="message">Your question</label>
+              <textarea id="message" name="message" rows="3" maxlength="1000" required <%= errors.message ? 'aria-invalid="true" aria-describedby="message-error"' : '' %>><%= values.message || '' %></textarea>
+              <% if (errors.message) { %><p class="field-error" id="message-error"><%= errors.message %></p><% } %>
+            </div>
+            <button class="btn secondary" type="submit">Send question</button>
+          </form>
+        </details>
+        <form method="post" action="/q/<%= token %>/decline">
+          <button class="btn danger-text" type="submit">Decline</button>
+        </form>
+      <% } %>
+    </article>
+  </main>
+</body>
+</html>

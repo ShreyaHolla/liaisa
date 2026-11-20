@@ -1,0 +1,14 @@
+<table class="sheet">
+  <caption class="sr">Quote line items</caption>
+  <tbody>
+    <% rows.forEach(function (r) { %>
+    <tr>
+      <th scope="row"><%= r.label %><% if (r.qty) { %><span class="qty"><%= r.qty %></span><% } %></th>
+      <td><%= r.amount %></td>
+    </tr>
+    <% }) %>
+  </tbody>
+  <tfoot>
+    <tr><th scope="row">Total</th><td><%= total %></td></tr>
+  </tfoot>
+</table>

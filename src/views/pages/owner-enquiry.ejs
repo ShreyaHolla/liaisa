@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= enquiry.customerName %> · <%= businessName %></title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <main class="wide">
+    <a class="back" href="/owner">← All enquiries</a>
+    <h1><%= enquiry.customerName %><% if (what) { %> · <%= what %><% } %></h1>
+    <p><span class="badge tone-<%= tone %>"><%= label %></span></p>
+    <% if (notice) { %>
+      <p class="banner tone-<%= notice[0] === 'ok' ? 'done' : 'problem' %>" role="<%= notice[0] === 'ok' ? 'status' : 'alert' %>"><%= notice[1] %></p>
+    <% } %>
+
+    <div class="cols">
+      <section class="panel quote-col" aria-labelledby="quote-h">
+        <% if (!estimate) { %>
+          <h2 id="quote-h">Quote</h2>
+          <p class="slate">There is no quote yet. Liaisa still needs details before it can price this enquiry.</p>
+        <% } else { %>
+          <h2 id="quote-h">Quote (<%= estimate.status === 'draft' ? 'draft ' : '' %>v<%= estimate.version %>)</h2>
+          <%- include('../partials/quote-sheet', { rows: rows, total: inr(estimate.total) }) %>
+          <% if (estimate.validUntil) { %><p class="slate small">Valid until <%= formatDate(estimate.validUntil) %></p><% } %>
+          <% if (estimate.noteForCustomer) { %><p class="small"><span class="slate">Note on the quote:</span> <%= estimate.noteForCustomer %></p><% } %>
+          <% if (estimate.revisionReason) { %><p class="slate small">Changed because: <%= estimate.revisionReason %></p><% } %>
+          <% if (warnings.length) { %>
+            <ul class="warnings" aria-label="Warnings">
+              <% warnings.forEach(function (w) { %><li><%= w %></li><% }) %>
+            </ul>
+          <% } %>
+        <% } %>
+        <p class="small">Reply by: <%= enquiry.preferredChannel === 'whatsapp' ? 'WhatsApp' : 'Email' %>
+          (<%= enquiry.preferredChannel === 'whatsapp' ? enquiry.customerPhone : enquiry.customerEmail %>)</p>
+
+        <% if (estimate && estimate.status === 'approved_send_failed') { %>
+          <p class="banner tone-problem" role="alert">The quote email didn’t send. Your quote is saved.</p>
+        <% } %>
+
+        <div class="actions">
+          <% if (can.approve) { %>
+            <form method="post" action="/owner/enquiries/<%= enquiry.id %>/approve">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="estimateVersion" value="<%= estimate.version %>">
+              <button class="btn" type="submit"
+                data-confirm="Send <%= inr(estimate.total) %> quote to <%= enquiry.customerName.split(' ')[0] %> <%= enquiry.preferredChannel === 'whatsapp' ? 'on WhatsApp' : 'by email' %>?"
+                data-confirm-label="Approve &amp; send">Approve &amp; send</button>
+            </form>
+          <% } %>
+          <% if (can.retry) { %>
+            <form method="post" action="/owner/enquiries/<%= enquiry.id %>/retry-send">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn" type="submit">Retry sending</button>
+            </form>
+          <% } %>
+          <% if (can.whatsapp) { %>
+            <form method="post" action="/owner/enquiries/<%= enquiry.id %>/whatsapp">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn <%= enquiry.preferredChannel === 'whatsapp' ? '' : 'secondary' %>" type="submit">Send on WhatsApp</button>
+            </form>
+          <% } %>
+          <% if (can.decline) { %>
+            <form method="post" action="/owner/enquiries/<%= enquiry.id %>/decline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn danger-text" type="submit"
+                data-confirm="Decline this enquiry? Nothing will be sent to <%= enquiry.customerName.split(' ')[0] %>."
+                data-confirm-label="Decline enquiry">Decline</button>
+            </form>
+          <% } %>
+        </div>
+        <% if (sentOnWhatsapp) { %><p class="slate small" role="status">Opened in WhatsApp. Tap Send there to deliver it.</p><% } %>
+        <% if (quoteLink) { %><p class="slate small">Quote link: <a class="quote-link" href="<%= quoteLink %>"><%= quoteLink %></a></p><% } %>
+
+        <% if (can.edit) { %>
+          <details class="edit" <%= Object.keys(edit.errors).length ? 'open' : '' %>>
+            <summary>Edit quote</summary>
+            <% if (Object.keys(edit.errors).length) { %>
+              <div class="notice notice-error" role="alert">
+                <% Object.values(edit.errors).forEach(function (m) { %><div><%= m %></div><% }) %>
+              </div>
+            <% } %>
+            <form method="post" action="/owner/enquiries/<%= enquiry.id %>/edit">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div class="field">
+                <label for="quantity">Quantity<%= pricing.services.find(function (s) { return s.id === requirements.service_id; })?.unit === 'per_person' ? ' (guests)' : '' %></label>
+                <input id="quantity" name="quantity" type="number" min="1" max="10000" inputmode="numeric" required
+                  value="<%= edit.values.quantity !== undefined ? edit.values.quantity : requirements.quantity %>"
+                  <%= edit.errors.quantity ? 'aria-invalid="true"' : '' %>>
+              </div>
+              <div class="field">
+                <label for="discountAmount">Discount in rupees (optional)</label>
+                <input id="discountAmount" name="discountAmount" type="number" min="1" inputmode="numeric"
+                  value="<%= edit.values.discountAmount !== undefined ? edit.values.discountAmount : (discount ? discount.amount : '') %>"
+                  <%= edit.errors.discountAmount ? 'aria-invalid="true"' : '' %>>
+              </div>
+              <div class="field">
+                <label for="discountReason">Reason for the discount</label>
+                <input id="discountReason" name="discountReason" type="text" maxlength="200"
+                  value="<%= edit.values.discountReason !== undefined ? edit.values.discountReason : (discount ? discount.reason : '') %>"
+                  <%= edit.errors.discountReason ? 'aria-invalid="true"' : '' %>>
+              </div>
+              <div class="field">
+                <label for="note">Note on the quote (optional, the customer sees it)</label>
+                <textarea id="note" name="note" rows="2" maxlength="500"><%= edit.values.note !== undefined ? edit.values.note : (estimate.noteForCustomer || '') %></textarea>
+              </div>
+              <div class="field">
+                <label for="revisionReason">Why are you changing it?</label>
+                <input id="revisionReason" name="revisionReason" type="text" maxlength="300" required
+                  value="<%= edit.values.revisionReason || '' %>" <%= edit.errors.revisionReason ? 'aria-invalid="true"' : '' %>>
+              </div>
+              <button class="btn secondary" type="submit">Save new version</button>
+            </form>
+          </details>
+        <% } %>
+      </section>
+
+      <section class="panel conv-col" aria-labelledby="conv-h">
+        <h2 id="conv-h">Conversation</h2>
+        <div class="exchange">
+          <% if (history.length) { history.forEach(function (m) { %>
+            <% if (m.role === 'agent') { %><p class="liaisa"><%= m.text %></p><% } else { %><p class="you">“<%= m.text %>”</p><% } %>
+          <% }) } else { %>
+            <p class="you">“<%= enquiry.rawText %>”</p>
+          <% } %>
+        </div>
+
+        <% if (question) { %>
+          <p class="banner tone-needs" role="status"><strong>Customer question:</strong> “<%= question.message %>”</p>
+          <p class="small">
+            <% if (replyEmail) { %><a href="mailto:<%= replyEmail %>?subject=<%= encodeURIComponent('Your quote from ' + businessName) %>">Reply by email</a><% } %>
+            <% if (replyEmail && replyPhone) { %> · <% } %>
+            <% if (replyPhone) { %><a href="https://wa.me/<%= replyPhone %>">Reply on WhatsApp</a><% } %>
+          </p>
+        <% } %>
+
+        <h2>What Liaisa understood</h2>
+        <% if (understood) { %>
+          <dl class="facts">
+            <% if (understood.serviceName) { %><dt>Service</dt><dd><%= understood.serviceName %></dd><% } %>
+            <% if (understood.quantity) { %><dt>Quantity</dt><dd><%= understood.quantity %></dd><% } %>
+            <% if (understood.eventDate) { %><dt>Date</dt><dd><%= formatDate(understood.eventDate) %></dd><% } %>
+            <% if (understood.location) { %><dt>Area</dt><dd><%= understood.location %></dd><% } %>
+            <% if (understood.addonNames && understood.addonNames.length) { %><dt>Add-ons</dt><dd><%= understood.addonNames.join(', ') %></dd><% } %>
+          </dl>
+        <% } else { %>
+          <p class="slate">Nothing yet.</p>
+        <% } %>
+        <% if (enquiry.summaryForOwner) { %><p><strong>Summary for you:</strong> <%= enquiry.summaryForOwner %></p><% } %>
+
+        <h2>Activity</h2>
+        <ul class="rows small">
+          <% emails.forEach(function (m) { %><li>Quote email to <%= m.toAddress %>: <%= m.status === 'accepted' ? 'sent' : 'failed' %> · <%= timeAgo(m.createdAt, now) %></li><% }) %>
+          <% shares.forEach(function (s) { %><li>Opened in WhatsApp · <%= timeAgo(s.createdAt, now) %></li><% }) %>
+          <% responses.forEach(function (r) { %><li>Customer <%= r.type === 'accept' ? 'accepted' : r.type === 'decline' ? 'declined' : 'asked a question' %><%= r.message ? ': “' + r.message + '”' : '' %> · <%= timeAgo(r.createdAt, now) %></li><% }) %>
+          <li>AI requests used: <%= enquiry.aiRequestsUsed %></li>
+        </ul>
+      </section>
+    </div>
+  </main>
+  <%- include('../partials/confirm-dialog') %>
+  <script src="/js/owner.js" defer></script>
+</body>
+</html>

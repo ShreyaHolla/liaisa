@@ -54,8 +54,10 @@ function distanceFor(config, req) {
  * Returns whole-rupee integers; paise are used only inside this function.
  * Throws ValidationError for input that cannot be priced; rate-card mismatches
  * come back as `warnings` and are never silently fixed.
+ * `options.discount` ({ amount: whole rupees, reason }) is the owner's own figure, never Claude's.
+ * It comes off after weekend and travel, before tax, so tax applies to the discounted amount.
  */
-export function calculateEstimate(config, req) {
+export function calculateEstimate(config, req, options = {}) {
   const { service, addons, weekday } = validate(config, req);
   const warnings = [];
   const lines = []; // { kind, label, quantity?, unitPrice?, paise }
@@ -113,6 +115,22 @@ export function calculateEstimate(config, req) {
     } else if (band.fee > 0) {
       lines.push({ kind: 'travel', label: 'Travel fee', paise: toPaise(band.fee) });
     }
+  }
+
+  // 4b. Owner discount: whole rupees, with a reason, never more than the pre-tax amount
+  const { discount } = options;
+  if (discount !== undefined) {
+    if (!Number.isInteger(discount.amount) || discount.amount < 1) {
+      throw new ValidationError('discount must be a whole number of rupees, 1 or more');
+    }
+    if (typeof discount.reason !== 'string' || discount.reason.trim() === '') {
+      throw new ValidationError('discount needs a reason');
+    }
+    const preTax = lines.reduce((sum, l) => sum + l.paise, 0);
+    if (toPaise(discount.amount) > preTax) {
+      throw new ValidationError('discount is more than the amount before tax');
+    }
+    lines.push({ kind: 'discount', label: 'Discount', reason: discount.reason.trim(), paise: -toPaise(discount.amount) });
   }
 
   // 5. Tax on everything so far

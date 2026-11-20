@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { rateLimit } from 'express-rate-limit';
 import { csrf, newCsrfToken } from '../middleware/csrf.js';
 import { errorBody } from '../middleware/errors.js';
+import { ownerEnquiryRoutes } from './ownerEnquiries.js';
 
 // Owner pages default to HTML: JSON only when the client explicitly prefers it.
 const wantsJson = (req) => req.accepts(['html', 'json']) === 'json';
@@ -36,7 +37,7 @@ function loginLimiter(renderLogin) {
   });
 }
 
-export function ownerRoutes({ config, repos }) {
+export function ownerRoutes({ config, repos, mailer = null }) {
   const router = Router();
 
   // Sessions live in MemoryStore on purpose: one demo process, and the demo data is in
@@ -101,9 +102,7 @@ export function ownerRoutes({ config, repos }) {
   });
   router.use(csrf);
 
-  router.get('/', (req, res) => {
-    res.render('pages/owner', { businessName: businessName(), csrfToken: res.locals.csrfToken });
-  });
+  router.use(ownerEnquiryRoutes({ repos, config, mailer }));
   router.post('/logout', (req, res, next) => {
     req.session.destroy((err) => {
       if (err) return next(err);
