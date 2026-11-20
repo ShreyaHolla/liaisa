@@ -37,7 +37,7 @@ test('every lead card has a Contact section with a fixed template: business, own
   const north = lead(ctx);
   const section = part(page.text, north.id);
   assert.match(section, /<summary>Contact<\/summary>/);
-  assert.match(section, /<span class="tag">Fixed template, no AI<\/span>/);
+  assert.match(section, /<span class="tag">Fixed template<\/span>/);
   assert.ok(!section.includes('ai-badge'), 'the template is not AI');
   assert.equal(textareaOf(section), [
     `Hi team at ${ORG},`, '',
@@ -252,8 +252,8 @@ test('Personalise with AI puts the existing AI draft in the box (AI badge, cap c
   const page = await ctx.o.get(html.headers.location.replace('#', '#'));
   const sec = part(page.text, north.id);
   assert.match(sec, /<span class="ai-badge"/);
-  assert.match(sec, /Written by AI from the facts we hold\. Edit it before you send\./);
-  assert.ok(!sec.includes('Fixed template, no AI'));
+  assert.match(sec, /Written by Liaisa from the facts we hold\. Edit it before you send\./);
+  assert.ok(!sec.includes('Fixed template'));
   assert.equal(textareaOf(sec), res.body.message);
   assert.match(sec, new RegExp(`<input type="hidden" name="draftId" value="${res.body.draftId}">`));
   assert.ok(sec.startsWith(`id="lead-${north.id}" open>`), 'the section is open');
@@ -262,7 +262,7 @@ test('Personalise with AI puts the existing AI draft in the box (AI badge, cap c
   assert.ok(call && !JSON.stringify(call).includes(NORTH_MAIL), 'the contact is never sent to the model');
   // Without the compose parameter the template is the default again.
   assert.ok(textareaOf(part((await findPage(ctx)).text, north.id)).includes('Fixed template') === false);
-  assert.match(part((await findPage(ctx)).text, north.id), /Fixed template, no AI/);
+  assert.match(part((await findPage(ctx)).text, north.id), /Fixed template/);
   // Using the AI text records against that same draft: no second slot, no second row.
   const sent = await msg(ctx, north.id, { action: 'mailto', message: `${res.body.message}\nPS` , draftId: res.body.draftId });
   assert.equal(sent.status, 200);

@@ -77,7 +77,7 @@
   </section>
 
   <section class="section" aria-labelledby="found-h">
-    <h2 id="found-h">Organisations found <%- include('../partials/ai-badge', { aiCaption: true }) %></h2>
+    <h2 id="found-h">Organisations found <%- include('../partials/ai-badge') %></h2>
     <% if (found.length === 0) { %>
       <div class="empty"><strong>Nothing yet.</strong>Press Find clients to look for organisations near you.</div>
     <% } else { %>
@@ -87,7 +87,7 @@
             <h3><%= l.name %> <%- include('../partials/ai-badge') %> <span class="chip tone-<%= l.status === 'replied' ? 'done' : l.status === 'not_interested' ? 'neutral' : 'progress' %>"><%= STATUS[l.status] %></span></h3>
             <p class="slate small"><%= l.orgType %></p>
             <p><%= l.whyFit %></p>
-            <p class="slate small">Found and summarised by AI from a public web page. Check the source.</p>
+            <p class="slate small">Found by Liaisa on a public web page. Check the source.</p>
             <p class="small">Source: <a href="<%= l.sourceUrl %>" target="_blank" rel="noopener noreferrer"><%= l.sourceDomain %></a></p>
             <% if (l.publicContact) { %><p class="small">Contact: <%= l.publicContact %></p><% } %>
             <% if (l.lastContact) { %><p class="slate small">Last contacted <%= timeAgo(l.lastContact, now) %> · <%= dateOf(l.lastContact) %></p><% } %>
@@ -128,7 +128,7 @@
   <section class="section" aria-labelledby="add-h">
     <h2 id="add-h">Add a lead</h2>
     <form method="post" action="/owner/clients/leads" class="card" novalidate>
-      <p class="tag-row"><span class="tag">Form</span> You type this in. No AI.</p>
+      <p class="tag-row"><span class="tag">Form</span> You type this in.</p>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="field">
         <label for="lead-name">Name</label>

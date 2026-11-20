@@ -308,14 +308,11 @@ details.edit summary { cursor: pointer; color: var(--plum); font-weight: 600; mi
    M13: AI markers, "calculated by the server", the landing demo
    ========================================================================== */
 /* AI badge: a sparkle plus the word AI (never the sparkle alone), plum. */
-.ai-badge { display: inline-flex; align-items: center; gap: 3px; padding: 1px var(--s-2); border-radius: 999px; background: var(--tint-progress-bg); color: var(--plum); border: 1px solid #cfc3dc; font: 600 var(--t-xs)/1.4 var(--font); letter-spacing: 0.02em; vertical-align: middle; white-space: nowrap; }
-.ai-caption { display: block; margin-top: var(--s-1); color: var(--slate); font-size: var(--t-xs); font-weight: 400; }
+.ai-badge { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--tint-progress-bg); color: var(--plum); border: 1px solid #cfc3dc; font: 600 0.8rem/1 var(--font); vertical-align: middle; cursor: help; flex: none; }
 /* Calculated amounts are jade; forms and fixed rules get a plain tag. */
 .calc-note { display: block; margin: var(--s-1) 0 0; color: var(--jade); font-size: var(--t-sm); font-weight: 500; }
 .calc-note::before { content: "✓ "; }
 .tag { display: inline-flex; align-items: center; padding: 1px var(--s-2); border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--white); color: var(--slate); font-size: var(--t-xs); font-weight: 500; line-height: 1.4; vertical-align: middle; white-space: normal; max-width: 100%; }
-.legend { margin: var(--s-5) 0 0; padding-top: var(--s-3); border-top: 1px solid var(--line); color: var(--slate); font-size: var(--t-sm); }
-.legend span { color: var(--plum); }
 .sheet tfoot td { color: var(--jade); }
 .approval__total { color: var(--jade); }
 .approval__total .calc-note { font-family: var(--font); font-size: var(--t-xs); text-align: right; }

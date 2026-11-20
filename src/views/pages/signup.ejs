@@ -10,7 +10,7 @@
     <p class="banner tone-done" role="note">Demo environment: data may reset.</p>
     <% if (notice) { %><p class="banner tone-problem" role="alert"><%= notice %></p><% } %>
     <form method="post" action="/signup" class="card" novalidate>
-      <p class="tag-row"><span class="tag">Form</span> You fill this in. No AI here.</p>
+      <p class="tag-row"><span class="tag">Form</span> You fill this in.</p>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="field">
         <label for="businessName">Business name</label>
@@ -45,7 +45,6 @@
       <p class="slate small">You will start with two example services and two areas to edit. Nothing reaches a customer until you approve it.</p>
     </form>
     <p class="small">Already signed up? <a href="/owner/login">Log in</a> · <a href="/">← Back to Liaisa</a></p>
-    <%- include('../partials/legend') %>
   </main>
   <script src="<%= asset('/js/ui.js') %>" defer></script>
 </body>

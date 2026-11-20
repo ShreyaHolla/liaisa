@@ -86,7 +86,7 @@
         <h1 tabindex="-1" data-focus>Tell us a few details</h1>
         <% if (message) { %><p class="notice" role="status"><%= message %></p><% } %>
         <form method="post" action="<%= base %>/api/enquiries/<%= publicId %>/form" class="card" data-enhance novalidate>
-          <p class="tag-row"><span class="tag">Form</span> Fixed fields. No AI here.</p>
+          <p class="tag-row"><span class="tag">Form</span> Fixed fields.</p>
           <div class="field">
             <label for="service_id">Service</label>
             <select id="service_id" name="service_id"<% if (errors.service_id) { %> aria-invalid="true" aria-describedby="error-service_id"<% } %>>
@@ -130,7 +130,6 @@
       <% } %>
     </div>
 
-    <%- include('../partials/legend') %>
     <%- include('../partials/powered-by') %>
   </main>
   <script src="<%= asset('/js/ui.js') %>" defer></script>

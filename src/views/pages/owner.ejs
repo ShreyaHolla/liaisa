@@ -15,7 +15,7 @@
         <button class="btn secondary" type="button" id="briefing-start">Read my approvals</button>
         <button class="btn secondary" type="button" id="briefing-pause" hidden>Pause</button>
         <button class="btn text" type="button" id="briefing-stop" hidden>Stop</button>
-        <span class="tag">Read aloud by your device from the fixed fields below. Not written by AI.</span>
+        <span class="tag">Read aloud by your device from the fixed fields below.</span>
       </div>
       <% if (summary.bulk.limit !== null && summary.bulk.clean.length) { %>
         <a class="btn" href="/owner/approve-clean">Approve all clean quotes (<%= summary.bulk.clean.length %>)</a>

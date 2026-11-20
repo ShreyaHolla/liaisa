@@ -14,7 +14,7 @@
     <h2 id="fu-h">Follow up</h2>
     <% if (followup.due) { %>
       <p>No reply yet. This is reminder <%= followup.sentCount + 1 %> of <%= followup.max %>, by <%= followup.channel === 'whatsapp' ? 'WhatsApp' : 'email' %>.</p>
-      <p class="slate small">Draft message <span class="tag">Fixed template, no AI</span></p>
+      <p class="slate small">Draft message <span class="tag">Fixed template</span></p>
       <blockquote class="draft"><%= followup.draft.text %></blockquote>
       <% if (followup.channel === 'whatsapp' && followup.canSend) { %><p class="slate small">This opens WhatsApp with the message filled in. You tap Send there.</p><% } %>
       <% if (!followup.canSend) { %><p class="banner tone-problem" role="alert"><%= followup.channel === 'email' ? 'Email sending is switched off, so this reminder can’t be sent.' : 'This customer didn’t give a phone number.' %></p><% } %>
@@ -174,7 +174,7 @@
     <% } else { %>
       <p class="slate">Nothing yet.</p>
     <% } %>
-    <% if (enquiry.summaryForOwner) { %><p><strong>Summary for you:</strong> <% if (enquiry.source === 'ai') { %><%- include('../partials/ai-badge', { aiCaption: true }) %><% } else { %><span class="tag">Form</span><% } %><br><%= enquiry.summaryForOwner %></p><% } %>
+    <% if (enquiry.summaryForOwner) { %><p><strong>Summary for you:</strong> <% if (enquiry.source === 'ai') { %><%- include('../partials/ai-badge') %><% } else { %><span class="tag">Form</span><% } %><br><%= enquiry.summaryForOwner %></p><% } %>
 
     <h2>Activity</h2>
     <ul class="rows small">

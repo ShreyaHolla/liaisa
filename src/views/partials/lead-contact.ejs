@@ -24,9 +24,9 @@
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <% if (c.draftId) { %><input type="hidden" name="draftId" value="<%= c.draftId %>"><% } %>
         <p class="tag-row">
-          <% if (c.kind === 'ai') { %><%- include('ai-badge') %> Written by AI from the facts we hold. Edit it before you send.
+          <% if (c.kind === 'ai') { %><%- include('ai-badge') %> Written by Liaisa from the facts we hold. Edit it before you send.
           <% } else if (c.kind === 'standard') { %><span class="tag">Standard message</span> Edit it as you like.
-          <% } else { %><span class="tag">Fixed template, no AI</span> Edit it as you like.<% } %>
+          <% } else { %><span class="tag">Fixed template</span> Edit it as you like.<% } %>
         </p>
         <div class="field">
           <label for="msg-<%= l.id %>">Message</label>

@@ -11,10 +11,9 @@ import { DEMO_PRICING_CONFIG } from '../../src/seed.js';
 import { signLink } from '../../src/services/quotes/oneTap.js';
 
 const css = fs.readFileSync(new URL('../../src/public/css/app.css', import.meta.url), 'utf8');
-const BADGE = /<span class="ai-badge"[^>]*><span aria-hidden="true">✦<\/span> AI<span class="sr">: written by AI\. Prices are calculated by the server and approved by the owner\.<\/span><\/span>/;
+const BADGE = /<span class="ai-badge" role="img" aria-label="Written by AI" title="Written by AI\. Prices are calculated by the server and approved by the owner\.">✦<\/span>/;
 const BADGE_ALL = new RegExp(BADGE.source, 'g');
 const SENTENCE = 'Written by AI. Prices are calculated by the server and approved by the owner.';
-const LEGEND = '✦</span> AI = written by AI. Everything else is a form or a fixed rule.';
 const count = (text, re) => (text.match(re) ?? []).length;
 async function world(opts) {
   const ctx = setupOwner(opts);
@@ -24,17 +23,18 @@ const section = (text, from, to) => text.slice(text.indexOf(from), text.indexOf(
 
 // ---- The badge itself --------------------------------------------------------------------------
 
-test('the AI badge is a sparkle plus the word AI, never an icon alone, with an accessible label and a tooltip', async () => {
+test('the AI badge is the sparkle only: no visible AI text, an aria-label "Written by AI" and the tooltip', async () => {
   const ctx = await world();
   const page = await request(ctx.app).get('/');
   const badge = BADGE.exec(page.text)[0];
-  assert.match(badge, /title="Written by AI\. Prices are calculated by the server and approved by the owner\."/);
-  assert.match(badge, /<span aria-hidden="true">✦<\/span> AI</, 'the sparkle is decoration; the text AI is always there');
-  assert.match(badge, /class="sr">: written by AI/, 'screen readers get the full sentence');
+  assert.match(badge, /title="Written by AI\. Prices are calculated by the server and approved by the owner\."/, 'the tooltip');
+  assert.match(badge, /role="img" aria-label="Written by AI"/, 'the label screen readers get');
+  assert.equal(badge.replace(/<[^>]+>/g, ''), '✦', 'the visible content is the sparkle and nothing else');
+  assert.ok(!/class="sr"|>\s*AI\s*</.test(badge), 'no visible AI text');
   assert.match(css, /\.ai-badge \{[^}]*color: var\(--plum\)/);
 });
 
-test('no page has a sparkle without the word AI next to it', async () => {
+test('every sparkle on every page is a labelled AI badge, and there is no legend line anywhere', async () => {
   const ctx = await world();
   const rohan = byName(ctx.repos, 'Rohan Iyer');
   const kavita = byName(ctx.repos, 'Kavita Reddy');
@@ -45,9 +45,9 @@ test('no page has a sparkle without the word AI next to it', async () => {
   for (const [path, owner] of paths) {
     const res = owner ? await ctx.o.get(path) : await request(ctx.app).get(path);
     assert.equal(res.status, 200, path);
-    const stripped = res.text.replace(BADGE_ALL, '').replace(/<p class="legend"[\s\S]*?<\/p>/g, '').replace(/<svg[\s\S]*?<\/svg>/g, '');
-    assert.ok(!stripped.includes('✦'), `${path}: a sparkle outside a badge or the legend`);
-    for (const m of res.text.matchAll(/✦<\/span>([^<]*)/g)) assert.match(m[1], /^ (?:AI|AI = written by AI\.)/, `${path}: "${m[1]}"`);
+    const stripped = res.text.replace(BADGE_ALL, '').replace(/<svg[\s\S]*?<\/svg>/g, '');
+    assert.ok(!stripped.includes('✦'), `${path}: a sparkle outside a labelled badge`);
+    assert.ok(!/AI = written by AI|class="legend"|Everything else is a form or a fixed rule/.test(res.text), `${path}: the legend line is gone`);
   }
 });
 
@@ -74,7 +74,7 @@ test('customer screens: the assistant’s question and "What we understood" carr
   const fb = agentSetup({ env: { AI_ENABLED: 'false' } });
   const first = await request(fb.app).post('/b/mehfil-kitchen/api/enquiries').send(START);
   const fallback = await request(fb.app).post('/b/mehfil-kitchen/api/enquiries').set('Accept', 'text/html').type('form').send({ ...START, name: 'Meera' });
-  assert.match(fallback.text, /<span class="tag">Form<\/span> Fixed fields\. No AI here\./);
+  assert.match(fallback.text, /<span class="tag">Form<\/span> Fixed fields\./);
   const formDone = await request(fb.app).post(`/b/mehfil-kitchen/api/enquiries/${first.body.publicId}/form`).set('Accept', 'text/html').type('form')
     .send({ service_id: 'veg_buffet', quantity: '40', event_date: '2026-12-13', location: 'Koramangala' });
   assert.match(formDone.text, /What we understood <span class="tag">Form<\/span>/);
@@ -89,7 +89,8 @@ test('owner detail: "What Liaisa understood" and "Summary for you" are marked AI
   assert.match(ai.text, /<h2>What Liaisa understood <span class="ai-badge"/);
   const summary = section(ai.text, '<strong>Summary for you:</strong>', '</p>');
   assert.match(summary, BADGE);
-  assert.ok(summary.includes(SENTENCE), 'the caption sits under the summary');
+  assert.ok(summary.includes(SENTENCE), 'the tooltip carries the sentence');
+  assert.ok(!/ai-caption/.test(summary) && !summary.replace(/title="[^"]*"/g, '').includes('Prices are calculated'), 'no visible caption');
   const form = await ctx.o.get(`/owner/enquiries/${arjun.id}`);
   assert.match(form.text, /<h2>What Liaisa understood <span class="tag">Form<\/span><\/h2>/);
   assert.match(section(form.text, '<strong>Summary for you:</strong>', '</p>'), /<span class="tag">Form<\/span>/);
@@ -104,20 +105,21 @@ test('Client Finder: drafted messages, discovered leads and their why-fit lines 
   assert.equal(cards.length, 5);
   for (const card of cards) {
     assert.match(card, BADGE);
-    assert.match(card, /Found and summarised by AI from a public web page\. Check the source\./);
+    assert.match(card, /Found by Liaisa on a public web page\. Check the source\./);
   }
   assert.match(section(find.text, '<h2 id="found-h">', '</h2>'), BADGE);
-  assert.ok(find.text.includes(SENTENCE), 'the one-line caption is on the page');
+  assert.equal(count(find.text, /title="Written by AI\. Prices are calculated by the server and approved by the owner\."/g), count(find.text, BADGE_ALL), 'the sentence lives in each badge’s tooltip');
+  assert.ok(!find.text.replace(/title="[^"]*"/g, '').includes(SENTENCE), 'and nowhere as visible text');
 
   const reconnect = await ctx.o.get('/owner/clients?tab=reconnect');
   assert.match(reconnect.text, /<span class="tag">Fixed rule<\/span> <span class="slate small">Why now:<\/span>/);
   assert.equal(count(reconnect.text, BADGE_ALL), 0, 'reasons are rules, not AI');
   const leads = await ctx.o.get('/owner/clients?tab=leads');
-  assert.match(leads.text, /<span class="tag">Form<\/span> You type this in\. No AI\./);
+  assert.match(leads.text, /<span class="tag">Form<\/span> You type this in\./);
 
   const d = await ctx.o.postJson('/owner/clients/draft', { type: 'customer', ref: 'e:sanjay@example.test' });
   const page = await ctx.o.get(`/owner/clients/drafts/${d.body.draftId}`);
-  assert.match(page.text, /<span class="ai-badge"[\s\S]*?<\/span><\/span>\s*Written by Liaisa from the facts we hold\./);
+  assert.match(page.text, /✦<\/span>\s*Written by Liaisa from the facts we hold\./);
 
   const plain = await world({ env: { AI_ENABLED: 'false' } });
   const d2 = await plain.o.postJson('/owner/clients/draft', { type: 'customer', ref: 'e:sanjay@example.test' });
@@ -126,11 +128,11 @@ test('Client Finder: drafted messages, discovered leads and their why-fit lines 
   assert.equal(count(std.text, BADGE_ALL), 0, 'a template is not marked AI');
 });
 
-test('the voice briefing is labelled for what it is: read aloud from fixed fields, not written by AI', async () => {
+test('the voice briefing is labelled for what it is: read aloud from the fixed fields, with no AI badge', async () => {
   const ctx = await world();
   const page = await ctx.o.get('/owner');
   const briefing = section(page.text, '<div class="briefing" id="briefing" hidden>', '</div>');
-  assert.match(briefing, /Read aloud by your device from the fixed fields below\. Not written by AI\./);
+  assert.match(briefing, /<span class="tag">Read aloud by your device from the fixed fields below\.<\/span>/);
   assert.equal(count(briefing, BADGE_ALL), 0, 'it is built by code from the card fields, so it is not marked AI');
 });
 
@@ -139,7 +141,7 @@ test('follow-up reminders use a fixed template and say so', async () => {
   ctx.repos.businessSettings.save({ followupAfterDays: 0 });
   const rohan = byName(ctx.repos, 'Rohan Iyer');
   const page = await ctx.o.get(`/owner/enquiries/${rohan.id}`);
-  assert.match(page.text, /Draft message <span class="tag">Fixed template, no AI<\/span>/);
+  assert.match(page.text, /Draft message <span class="tag">Fixed template<\/span>/);
   assert.equal(count(section(page.text, 'id="fu-h"', '</section>'), BADGE_ALL), 0);
 });
 
@@ -162,20 +164,43 @@ test('every total is captioned "Calculated by the server" and drawn in jade', as
   assert.match(css, /\.calc-note \{[^}]*color: var\(--jade\)/);
 });
 
-// ---- The legend --------------------------------------------------------------------------------
+// ---- No legend; plain tags never repeat the word AI ----------------------------------------------
 
-test('a one-line legend on customer and owner screens', async () => {
+test('there is no legend line on any customer or owner screen', async () => {
   const ctx = await world();
   const rohan = byName(ctx.repos, 'Rohan Iyer');
   const kavita = byName(ctx.repos, 'Kavita Reddy');
   const link = signLink('x'.repeat(48), { businessId: ctx.repos.business.id, enquiryId: kavita.id, version: 1, action: 'approve' });
-  const pages = [await request(ctx.app).get('/'), await request(ctx.app).get('/signup'), await request(ctx.app).get('/owner/login'), await request(ctx.app).get('/b/mehfil-kitchen/enquire'), await request(ctx.app).get(`/b/mehfil-kitchen/q/${estimateOf(ctx.repos, rohan).quoteToken}`),
-    await request(ctx.app).get(`/a/${link}`), await ctx.o.get('/owner'), await ctx.o.get('/owner/follow-ups'), await ctx.o.get('/owner/clients'), await ctx.o.get('/owner/setup'),
-    await ctx.o.get(`/owner/enquiries/${kavita.id}`), await ctx.o.get('/owner/approve-clean')];
+  const pages = [await request(ctx.app).get('/'), await request(ctx.app).get('/signup'), await request(ctx.app).get('/owner/login'), await request(ctx.app).get('/b/mehfil-kitchen/enquire'),
+    await request(ctx.app).get(`/b/mehfil-kitchen/q/${estimateOf(ctx.repos, rohan).quoteToken}`), await request(ctx.app).get(`/a/${link}`), await ctx.o.get('/owner'),
+    await ctx.o.get('/owner/follow-ups'), await ctx.o.get('/owner/clients'), await ctx.o.get('/owner/setup'), await ctx.o.get(`/owner/enquiries/${kavita.id}`), await ctx.o.get('/owner/approve-clean')];
   for (const res of pages) {
-    assert.equal(count(res.text, /<p class="legend" role="note">/g), 1);
-    assert.ok(res.text.includes(LEGEND));
+    assert.equal(res.status, 200);
+    assert.ok(!/AI = written by AI|Everything else is a form or a fixed rule|class="legend"/.test(res.text));
   }
+  assert.ok(!/\.legend\b/.test(css), 'the style is gone too');
+  assert.ok(!fs.existsSync(new URL('../../src/views/partials/legend.ejs', import.meta.url)));
+});
+
+test('the plain tags ("Form", "Fixed rule", "Fixed template", "Calculated by the server") never repeat the word AI', async () => {
+  const ctx = await world();
+  const kavita = byName(ctx.repos, 'Kavita Reddy');
+  const rohan = byName(ctx.repos, 'Rohan Iyer');
+  ctx.repos.businessSettings.save({ followupAfterDays: 0 });
+  await ctx.o.postJson('/owner/clients/discover', { area: 'Whitefield' });
+  const north = ctx.repos.leads.all().find((l) => l.email);
+  const pages = [await request(ctx.app).get('/'), await request(ctx.app).get('/signup'), await request(ctx.app).get('/b/mehfil-kitchen/enquire'), await ctx.o.get('/owner'),
+    await ctx.o.get(`/owner/enquiries/${kavita.id}`), await ctx.o.get(`/owner/enquiries/${rohan.id}`), await ctx.o.get('/owner/clients?tab=reconnect'), await ctx.o.get('/owner/clients?tab=leads'),
+    await ctx.o.get(`/owner/clients?tab=find&compose=${north.id}`)];
+  let seen = 0;
+  for (const res of pages) {
+    for (const m of res.text.matchAll(/<(?:span class="tag"|span class="calc-note"|p class="calc-note")>([^<]*)</g)) {
+      seen += 1;
+      assert.ok(!/\bAI\b/i.test(m[1]), `"${m[1]}" repeats the word AI`);
+    }
+  }
+  assert.ok(seen >= 12, `checked ${seen} tags`);
+  for (const text of ['Form', 'Fixed rule', 'Fixed template', 'You type this in.', 'You fill this in.']) assert.ok(pages.some((p) => p.text.includes(`>${text}`) || p.text.includes(text)), text);
 });
 
 // ---- The landing page --------------------------------------------------------------------------
