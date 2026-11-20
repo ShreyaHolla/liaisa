@@ -5,10 +5,11 @@ import { calculateEstimate } from '../pricing/calculateEstimate.js';
  * version. Prices come only from calculateEstimate; nothing here does arithmetic.
  * `requirements`, `discount` and `note` are the owner's edits (F6); the saved version keeps the note.
  */
-export function createEstimate(repos, enquiryId, { requirements, discount, note, revisionReason = null, now } = {}) {
+export function createEstimate(repos, enquiryId, { requirements, discount, note, revisionReason = null, pricingConfigId, now } = {}) {
   const enquiry = repos.enquiries.get(enquiryId);
   if (!enquiry) throw new Error('enquiry not found');
-  const config = repos.pricingConfigs.latestApproved();
+  // An edit keeps the config the quote was first priced with (owner setup changes apply to new enquiries only).
+  const config = (pricingConfigId && repos.pricingConfigs.get(pricingConfigId)) || repos.pricingConfigs.latestApproved();
   if (!config) throw new Error('no approved pricing config');
   const result = calculateEstimate(config.configJson, requirements ?? enquiry.requirementsJson, { discount });
   return repos.estimates.create(

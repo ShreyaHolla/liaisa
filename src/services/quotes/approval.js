@@ -141,10 +141,10 @@ export function editEstimate(deps, enquiryId, input) {
   const previous = currentEstimate(repos, enquiryId);
   if (previous && previous.status !== 'draft') throw new ConflictError("This quote is already approved, so it can't be edited.");
 
-  const pricing = repos.pricingConfigs.latestApproved().configJson;
+  const pricing = (previous && repos.pricingConfigs.get(previous.pricingConfigId)?.configJson) || repos.pricingConfigs.latestApproved().configJson;
   const requirements = normaliseRequirements(pricing, input.requirements);
   const created = createEstimate(repos, enquiryId, {
-    requirements, discount: input.discount, note: input.note, revisionReason: input.revisionReason, now: clock(deps),
+    requirements, pricingConfigId: previous?.pricingConfigId, discount: input.discount, note: input.note, revisionReason: input.revisionReason, now: clock(deps),
   });
   if (previous) repos.estimates.update(previous.id, { status: 'superseded' });
   repos.enquiries.update(enquiryId, {

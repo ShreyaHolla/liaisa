@@ -9,9 +9,9 @@ export const DEMO_PRICING_CONFIG = {
   tax_pct: 5,
   minimum_order: 5000,
   services: [
-    { id: 'veg_buffet', name: 'Veg buffet', unit: 'per_person', price: 450, min_qty: 20, max_qty: 200 },
-    { id: 'nonveg_buffet', name: 'Non-veg buffet', unit: 'per_person', price: 600, min_qty: 20, max_qty: 200 },
-    { id: 'live_counter', name: 'Live dosa counter', unit: 'per_hour', price: 2500, min_qty: 2 },
+    { id: 'veg_buffet', name: 'Veg buffet', unit: 'per_person', unit_label: 'Number of guests', price: 450, min_qty: 20, max_qty: 200 },
+    { id: 'nonveg_buffet', name: 'Non-veg buffet', unit: 'per_person', unit_label: 'Number of guests', price: 600, min_qty: 20, max_qty: 200 },
+    { id: 'live_counter', name: 'Live dosa counter', unit: 'per_hour', unit_label: 'Hours', price: 2500, min_qty: 2 },
   ],
   addons: [
     { id: 'dessert', name: 'Dessert counter', unit: 'per_person', price: 80 },
@@ -23,6 +23,14 @@ export const DEMO_PRICING_CONFIG = {
     bands: [{ max_km: 10, fee: 0 }, { max_km: 25, fee: 1500 }],
   },
   required_fields: ['service_id', 'quantity', 'event_date', 'location'],
+};
+
+/** The demo business. "Reset to demo business" on /owner/setup restores these values. */
+export const DEMO_BUSINESS = {
+  businessName: 'Mehfil Kitchen',
+  tagline: 'Home-style catering for Bengaluru celebrations',
+  currencySymbol: '₹',
+  whatsappNumber: null,
 };
 
 const HOUR = 3600 * 1000;
@@ -86,8 +94,7 @@ const SAMPLES = [
  */
 export function seed(repos, { now = new Date() } = {}) {
   repos.businessSettings.save({
-    businessName: 'Mehfil Kitchen',
-    tagline: 'Home-style catering for Bengaluru celebrations',
+    ...DEMO_BUSINESS,
     ownerEmail: 'owner@mehfilkitchen.example',
     followupRulesJson: { steps: [{ step: 1, afterDays: 2 }, { step: 2, afterDays: 5 }] },
     templatesJson: {},
