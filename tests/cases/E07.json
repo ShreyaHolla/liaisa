@@ -1,0 +1,2 @@
+{ "id": "E07", "name": "Hinglish", "turns": ["Ghar pe party hai, 35 log, sab veg, 13 Dec, Koramangala"],
+  "expect": { "final": { "outcome": "ready", "requirements": { "service_id": "veg_buffet", "quantity": 35 } } } }

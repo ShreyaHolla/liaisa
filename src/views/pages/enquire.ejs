@@ -72,7 +72,7 @@
         <h1 tabindex="-1" data-focus>Thanks<%= firstName ? ', ' + firstName : '' %>. Your enquiry is with <%= biz.businessName %>.</h1>
         <% if (understood) { %>
           <h2 class="small-h">What we understood</h2>
-          <p><%= [understood.serviceName, understood.quantity ? understood.quantity + ' guests' : '', understood.eventDate, understood.location].filter(Boolean).concat(understood.addonNames || []).join(' · ') %></p>
+          <p><%= [understood.serviceName, understood.quantity ? understood.quantity + ' guests' : '', fmtDate(understood.eventDate), understood.location].filter(Boolean).concat(understood.addonNames || []).join(' · ') %></p>
         <% } %>
         <p>You'll get your quote <%= replyChannel === 'whatsapp' ? 'on WhatsApp' : 'by email' %> once the owner approves it.</p>
 

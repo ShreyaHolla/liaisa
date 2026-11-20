@@ -59,3 +59,6 @@ legend { font-size: var(--t-sm); color: var(--slate); padding: 0; margin-bottom:
 .ask { border-left: 3px solid var(--plum); padding-left: var(--s-3); font-size: var(--t-md); }
 .foot { margin-top: var(--s-6); }
 [hidden] { display: none !important; }
+/* Headings the script focuses: ring only for keyboard users (DESIGN §3.3) */
+[tabindex="-1"]:focus { outline: none; }
+[tabindex="-1"]:focus-visible { outline: 3px solid var(--plum); outline-offset: 2px; }

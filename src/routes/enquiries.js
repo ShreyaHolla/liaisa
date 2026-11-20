@@ -2,6 +2,7 @@
 // One handler serves JSON and HTML, chosen by the Accept header.
 import express, { Router } from 'express';
 import { ulid } from '../util/ulid.js';
+import { formatDate } from '../util/formatDate.js';
 import { wantsJson, errorBody } from '../middleware/errors.js';
 import { enquiryLimiter } from '../middleware/rateLimits.js';
 import { makeStartSchema, replySchema, requirementsSchema, fieldErrors } from '../services/enquiries/schema.js';
@@ -19,7 +20,7 @@ export function enquiryRoutes({ repos, ai, config }) {
     const biz = repos.businessSettings.get() ?? { businessName: 'Liaisa', tagline: '' };
     const pricing = repos.pricingConfigs.latestApproved()?.configJson ?? { services: [], addons: [], travel: { areas: {} } };
     return {
-      biz, services: pricing.services, addons: pricing.addons, areas: Object.keys(pricing.travel.areas),
+      fmtDate: formatDate, biz, services: pricing.services, addons: pricing.addons, areas: Object.keys(pricing.travel.areas),
       view: 'start', publicId: null, rawText: '', firstName: '', replyChannel: 'email',
       question: '', message: '', understood: null, prefill: {}, errors: {}, values: {}, notice: '',
       ...over,

@@ -5,7 +5,8 @@ import { ValidationError } from '../../errors.js';
 import { computeCostUsd } from '../../ai/cost.js';
 import { calculateEstimate } from '../pricing/calculateEstimate.js';
 import { createEstimate } from '../estimates/createEstimate.js';
-import { checkGuards, canAskQuestion } from './guards.js';
+import { checkGuards, canAskQuestion, MAX_QUESTIONS } from './guards.js';
+import { missingFields, normaliseRequirements } from './areas.js';
 import { buildRequest } from './promptBuilder.js';
 import { finishSchema, cleanRequirements, salvageRequirements } from './tools.js';
 
@@ -16,12 +17,20 @@ const OUT_OF_SCOPE_TEXT = (name) => `Thanks for asking. This one isn't something
 function evaluateFinish(input, known, pricing) {
   const parsed = finishSchema.safeParse(input);
   if (!parsed.success) return { error: `Invalid finish_intake: ${parsed.error.issues[0].path.join('.') || 'input'} ${parsed.error.issues[0].message}` };
-  const data = { ...parsed.data, requirements: { ...known, ...cleanRequirements(parsed.data.requirements) } };
-  if (data.status === 'needs_info' && !data.question_to_customer) return { error: 'question_to_customer is required for needs_info' };
+  // Merge across turns, snap the location to a configured area, then work out what is missing here, not from the model.
+  const requirements = normaliseRequirements(pricing, { ...known, ...cleanRequirements(parsed.data.requirements) });
+  const missing = missingFields(pricing, requirements);
+  const data = { ...parsed.data, requirements, missing_fields: parsed.data.status === 'needs_info' ? missing : [] };
+
   if (data.question_to_customer && PRICE_WORDS.test(data.question_to_customer)) return { error: 'Never mention prices to the customer' };
+  if (data.status === 'needs_info') {
+    if (!data.question_to_customer) return { error: 'question_to_customer is required for needs_info' };
+    if (missing.length === 0) return { error: 'Every required detail is already known. Call calculate_estimate, then finish_intake with status ready.' };
+    const wrong = parsed.data.missing_fields.filter((f) => !missing.includes(f));
+    if (wrong.length) return { error: `missing_fields lists details already known (${wrong.join(', ')}). Only ask for: ${missing.join(', ')}.` };
+  }
   if (data.status === 'ready') {
-    const missing = pricing.required_fields.filter((f) => data.requirements[f] === undefined || data.requirements[f] === '');
-    if (missing.length || data.missing_fields.length) return { error: `Not ready: missing ${[...missing, ...data.missing_fields].join(', ')}` };
+    if (missing.length) return { error: `Not ready: still missing ${missing.join(', ')}` };
     try {
       calculateEstimate(pricing, data.requirements);
     } catch (err) {
@@ -90,7 +99,10 @@ export async function runTurn(deps, enquiryId, customerText) {
     repos.enquiries.update(enquiryId, { aiRequestsUsed: enquiry.aiRequestsUsed + 1 });
 
     const today = now().toISOString().slice(0, 10);
-    const req = buildRequest({ businessName, pricing, history, known, today, turnMessages });
+    const req = buildRequest({
+      businessName, pricing, history, known, today, turnMessages,
+      missing: missingFields(pricing, known), questionsLeft: MAX_QUESTIONS - state.questionsAsked,
+    });
     const t0 = Date.now();
     let resp;
     try {
@@ -110,7 +122,7 @@ export async function runTurn(deps, enquiryId, customerText) {
       const result = evaluateFinish(finish.input, known, pricing);
       if (result.data) return finalize(result.data);
       finishError = result.error;
-      known = { ...known, ...salvageRequirements(finish.input) };
+      known = normaliseRequirements(pricing, { ...known, ...salvageRequirements(finish.input) });
     } else if (uses.length === 0) {
       finishError = 'Reply with a tool call.';
     }

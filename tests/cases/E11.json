@@ -1,0 +1,3 @@
+{ "id": "E11", "name": "misspelt area, playback", "turns": ["Veg lunch for 140 people at 5th Block Kormangala"],
+  "expect": { "first": { "outcome": "needs_info", "missing": ["event_date"], "questionIncludes": ["140", "Koramangala"],
+    "requirements": { "service_id": "veg_buffet", "quantity": 140, "location": "Koramangala" } } } }

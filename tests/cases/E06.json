@@ -1,0 +1,2 @@
+{ "id": "E06", "name": "add-ons", "turns": ["Veg buffet for 40 with dessert counter and serving staff, 15 Dec, Indiranagar"],
+  "expect": { "final": { "outcome": "ready", "requirements": { "service_id": "veg_buffet", "quantity": 40, "addon_ids": ["dessert", "staff"] } } } }

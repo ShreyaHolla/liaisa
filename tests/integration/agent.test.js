@@ -196,3 +196,68 @@ test('auto mock (dev default) handles a complete message end to end', async () =
   assert.equal(res.body.outcome, 'ready');
   assert.equal(newest(repos).status, 'awaiting_approval');
 });
+
+const lastUser = (ai, n) => ai.calls[n].messages.filter((m) => m.role === 'user').at(-1).content;
+
+test('M6b merge across turns: turn 2 keeps turn 1 details, snaps the area, and the prompt carries known/missing', async () => {
+  const partial = { event_date: '2026-12-13', location: 'Kormangala' };
+  const turn2 = [step.calc(REQ_READY), step.finish({ status: 'ready', requirements: partial, missing_fields: [], summary_for_owner: 'Veg buffet for 40.' })];
+  const { app, repos, ai } = setup({ steps: [scenarios.needs_info(), turn2] });
+  const first = await post(app);
+  const res = await request(app).post(`/api/enquiries/${first.body.publicId}/reply`).send({ answer: '13 Dec, Kormangala' });
+  assert.equal(res.body.outcome, 'ready');
+  const e = newest(repos);
+  assert.equal(e.requirementsJson.service_id, 'veg_buffet');
+  assert.equal(e.requirementsJson.quantity, 40);
+  assert.equal(e.requirementsJson.location, 'Koramangala');
+  assert.equal(repos.estimates.listByEnquiry(e.id)[0].total, calculateEstimate(DEMO_PRICING_CONFIG, REQ_READY).total);
+
+  const block = lastUser(ai, 1);
+  assert.match(block, /<known_so_far>\{"service_id":"veg_buffet","quantity":40\}<\/known_so_far>/);
+  assert.match(block, /<still_missing>\["event_date","location"\]<\/still_missing>/);
+  assert.match(block, /<questions_left>1<\/questions_left>/);
+});
+
+test('M6b the prompt shows dates as "Sat 5 Dec" and the done page does too', async () => {
+  const { app } = setup({ steps: [scenarios.needs_info(), scenarios.ready()] });
+  const first = await post(app);
+  const withDate = step.finish({
+    status: 'needs_info', requirements: { service_id: 'veg_buffet', quantity: 40, event_date: '2026-12-05' },
+    missing_fields: ['location'], question_to_customer: 'Veg buffet for 40 on Sat 5 Dec, lovely! Which area?', summary_for_owner: 'Area needed.',
+  });
+  const b = setup({ steps: [withDate, scenarios.ready()] });
+  const f = await post(b.app);
+  await request(b.app).post(`/api/enquiries/${f.body.publicId}/reply`).send({ answer: 'Koramangala' });
+  assert.match(lastUser(b.ai, 1), /"event_date_display":"Sat 5 Dec"/);
+
+  const html = await request(app).post(`/api/enquiries/${first.body.publicId}/reply`).set('Accept', 'text/html').type('form').send({ answer: '13 Dec' });
+  assert.match(html.text, /Veg buffet · 40 guests · Sun 13 Dec · Koramangala/);
+});
+
+test('M6b needs_info when nothing is missing is invalid: one retry, then it can finish', async () => {
+  const allKnown = step.finish({
+    status: 'needs_info', requirements: REQ_READY, missing_fields: ['event_date'], question_to_customer: 'Which date?', summary_for_owner: 'x',
+  });
+  const { app, ai, repos } = setup({ steps: [allKnown, scenarios.ready()] });
+  const res = await post(app);
+  assert.equal(res.body.outcome, 'ready');
+  assert.equal(ai.calls.length, 3);
+  assert.equal(newest(repos).status, 'awaiting_approval');
+});
+
+test('M6b missing_fields that lists a known field is invalid; the server stores its own missing list', async () => {
+  const wrong = step.finish({
+    status: 'needs_info', requirements: { service_id: 'veg_buffet', quantity: 40, location: 'Koramangala' },
+    missing_fields: ['quantity', 'event_date'], question_to_customer: 'How many guests, and which date?', summary_for_owner: 'x',
+  });
+  const right = step.finish({
+    status: 'needs_info', requirements: { service_id: 'veg_buffet', quantity: 40, location: 'Koramangala' },
+    missing_fields: ['event_date'], question_to_customer: 'Veg buffet for 40 in Koramangala, lovely! Which date?', summary_for_owner: 'x',
+  });
+  const { app, ai, repos } = setup({ steps: [wrong, right] });
+  const res = await post(app);
+  assert.equal(res.body.outcome, 'needs_info');
+  assert.equal(ai.calls.length, 2);
+  assert.deepEqual(newest(repos).missingFieldsJson, ['event_date']);
+  assert.match(JSON.stringify(ai.calls[1].messages.at(-1)), /already known \(quantity\)/);
+});

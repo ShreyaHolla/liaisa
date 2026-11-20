@@ -1,0 +1,2 @@
+{ "id": "E01", "name": "complete", "turns": ["Veg buffet for 50 people on 12 Dec in Koramangala"],
+  "expect": { "questions": 0, "final": { "outcome": "ready", "requirements": { "service_id": "veg_buffet", "quantity": 50, "event_date": "2026-12-12", "location": "Koramangala" } } } }

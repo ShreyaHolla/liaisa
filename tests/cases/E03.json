@@ -1,0 +1,3 @@
+{ "id": "E03", "name": "missing count", "turns": ["Veg buffet on 15 Dec at Whitefield", "about 45 people"],
+  "expect": { "first": { "outcome": "needs_info", "missing": ["quantity"] },
+    "final": { "outcome": "ready", "requirements": { "service_id": "veg_buffet", "quantity": 45, "event_date": "2026-12-15", "location": "Whitefield" } } } }

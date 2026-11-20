@@ -1,5 +1,6 @@
 // Builds one Claude request (ARCHITECTURE §7.2). Customer name, email and phone never go in here.
 import fs from 'node:fs';
+import { formatDate } from '../../util/formatDate.js';
 import { TOOLS } from './tools.js';
 
 const template = fs.readFileSync(new URL('../../../prompts/enquiry-agent.md', import.meta.url), 'utf8');
@@ -17,7 +18,13 @@ export function buildCatalogue(pricing) {
   };
 }
 
-export function buildRequest({ businessName, pricing, history, known, today, turnMessages }) {
+/** Compact state block for the newest customer message: what is known, what is still missing. */
+function stateBlock(known, missing, questionsLeft) {
+  const shown = known.event_date ? { ...known, event_date_display: formatDate(known.event_date) } : known;
+  return `\n<known_so_far>${JSON.stringify(shown)}</known_so_far>\n<still_missing>${JSON.stringify(missing)}</still_missing>\n<questions_left>${questionsLeft}</questions_left>`;
+}
+
+export function buildRequest({ businessName, pricing, history, known, missing, questionsLeft, today, turnMessages }) {
   const text = template
     .replaceAll('{{business_name}}', businessName)
     .replaceAll('{{catalogue}}', JSON.stringify(buildCatalogue(pricing)));
@@ -26,7 +33,7 @@ export function buildRequest({ businessName, pricing, history, known, today, tur
     if (h.role === 'agent') return { role: 'assistant', content: h.text };
     let content = wrap(h.text);
     if (i === 0) content = `<today>${today}</today>\n${content}`;
-    if (i === lastCustomer && Object.keys(known).length) content += `\n<known_so_far>${JSON.stringify(known)}</known_so_far>`;
+    if (i === lastCustomer && (history.length > 1 || Object.keys(known).length)) content += stateBlock(known, missing, questionsLeft);
     return { role: 'user', content };
   });
   return {

@@ -3,6 +3,8 @@
 //   createMockClient()           "auto": a small keyword-based stand-in so the demo works offline
 // A step is a response, a function (request) => response, or { error }. `calls` records requests.
 
+import { formatDate } from '../util/formatDate.js';
+
 let seq = 0;
 const toolUse = (name, input) => ({
   content: [{ type: 'tool_use', id: `toolu_mock_${++seq}`, name, input }],
@@ -69,6 +71,12 @@ function extract(text, cat, today) {
   return out;
 }
 
+function playback(r, cat) {
+  const name = cat.services.find((x) => x.id === r.service_id)?.name ?? 'Your enquiry';
+  const parts = [r.quantity ? `for ${r.quantity}` : '', r.event_date ? `on ${formatDate(r.event_date)}` : '', r.location ? `in ${r.location}` : ''];
+  return [name, ...parts].filter(Boolean).join(' ');
+}
+
 function autoStep(req) {
   const sys = req.system.map((b) => b.text).join('\n');
   const cat = JSON.parse(/<catalogue>([\s\S]*?)<\/catalogue>/.exec(sys)[1]);
@@ -85,7 +93,7 @@ function autoStep(req) {
       status: 'needs_info',
       requirements: r,
       missing_fields: missing,
-      question_to_customer: `Lovely! Could you tell us the ${words.join(' and the ')}?`,
+      question_to_customer: `${playback(r, cat)}, lovely! Could you tell us the ${words.join(' and the ')}?`,
       summary_for_owner: `Enquiry understood so far. Still needed: ${words.join(', ')}.`,
     });
   }

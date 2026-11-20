@@ -1,0 +1,3 @@
+{ "id": "E04", "name": "missing location", "turns": ["Non-veg buffet for 60 on 12 Dec", "Indiranagar"],
+  "expect": { "first": { "outcome": "needs_info", "missing": ["location"] },
+    "final": { "outcome": "ready", "requirements": { "service_id": "nonveg_buffet", "quantity": 60, "event_date": "2026-12-12", "location": "Indiranagar" } } } }

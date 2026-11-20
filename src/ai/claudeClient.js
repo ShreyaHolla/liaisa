@@ -14,10 +14,10 @@ export function createClaudeClient({ apiKey, models, timeoutMs = 20000 }) {
         const { default: Anthropic } = await import('@anthropic-ai/sdk');
         sdk = new Anthropic({ apiKey, timeout: timeoutMs, maxRetries: 0 });
       }
+      // No temperature: the intake model rejects it (HTTP 400 "Extra inputs are not permitted").
       const r = await sdk.messages.create({
         model: models[purpose],
         max_tokens: maxTokens,
-        temperature: 0.2,
         system,
         tools,
         tool_choice: toolChoice,

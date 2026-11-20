@@ -1,0 +1,2 @@
+{ "id": "E08", "name": "out of scope", "turns": ["Can you bake a 3-tier wedding cake?"],
+  "expect": { "noEstimate": true, "final": { "outcome": "out_of_scope" } } }

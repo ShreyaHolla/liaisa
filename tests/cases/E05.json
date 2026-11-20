@@ -1,0 +1,3 @@
+{ "id": "E05", "name": "vague", "turns": ["Food for a party", "veg, 25 people, 13 Dec, Koramangala"],
+  "expect": { "questions": 1, "first": { "outcome": "needs_info", "missing": ["service_id", "quantity", "event_date", "location"] },
+    "final": { "outcome": "ready", "requirements": { "service_id": "veg_buffet", "quantity": 25, "event_date": "2026-12-13", "location": "Koramangala" } } } }

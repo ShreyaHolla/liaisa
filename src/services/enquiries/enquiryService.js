@@ -3,6 +3,7 @@ import { ConflictError, NotFoundError, ValidationError } from '../../errors.js';
 import { calculateEstimate } from '../pricing/calculateEstimate.js';
 import { createEstimate } from '../estimates/createEstimate.js';
 import { runTurn } from '../agent/runTurn.js';
+import { normaliseRequirements } from '../agent/areas.js';
 
 const clock = (deps) => (deps.now ?? (() => new Date()))();
 
@@ -48,7 +49,7 @@ export function submitForm(deps, publicId, reqs) {
     throw new ConflictError('This enquiry has already moved on.');
   }
   const pricing = repos.pricingConfigs.latestApproved().configJson;
-  const requirements = Object.fromEntries(Object.entries(reqs).filter(([, v]) => v !== undefined));
+  const requirements = normaliseRequirements(pricing, Object.fromEntries(Object.entries(reqs).filter(([, v]) => v !== undefined)));
 
   try {
     calculateEstimate(pricing, requirements); // validates service, add-ons and date; result unused here

@@ -1,0 +1,2 @@
+{ "id": "E09", "name": "number words", "turns": ["Forty-five guests, non-veg buffet, twelfth of December, Whitefield"],
+  "expect": { "final": { "outcome": "ready", "requirements": { "service_id": "nonveg_buffet", "quantity": 45, "event_date": "2026-12-12" } } } }
