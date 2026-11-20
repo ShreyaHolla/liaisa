@@ -15,8 +15,11 @@ export async function submitContact(input, { store, mailer, config, log = consol
     await mailer.send(buildContactEmail(input, { from: config.mailFrom, to: config.ownerEmail }));
     return await store.setStatus(record.id, 'accepted');
   } catch (err) {
-    // Log the error code only: messages can contain addresses.
-    log.error(`Contact email send failed (message ${record.id}): ${err?.code ?? 'unknown error'}`);
+    // Never log credentials. SMTP errors carry a message and the failing command only.
+    log.error(
+      `Contact email send failed (message ${record.id}): ${err?.code ?? 'unknown error'}` +
+        ` | message: ${err?.message ?? 'n/a'} | command: ${err?.command ?? 'n/a'}`,
+    );
     return record;
   }
 }
