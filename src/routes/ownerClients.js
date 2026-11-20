@@ -72,7 +72,7 @@ export function ownerClientRoutes({ repos, config, ai, mailer }) {
       focus: { services: repos.pricingConfigs.latestApproved().configJson.services.map((s) => s.name), areas: Object.keys(repos.pricingConfigs.latestApproved().configJson.travel.areas) },
       searchesToday: searchesToday(repos, now), runsToday: runsToday(repos, now), discoveryCap: config.clientDiscoveryDailyCap,
       activity: activityLog(deps()), draftsToday: draftsToday(repos, now), cap: config.clientDraftDailyCap,
-      formatDate, timeAgo, now, errors: {}, values: {}, ...over,
+      formatDate, timeAgo, now, errors: {}, values: {}, active: 'clients', ...over,
     });
   }
   router.get('/clients', (req, res) => renderPage(req, res));
@@ -143,7 +143,7 @@ export function ownerClientRoutes({ repos, config, ai, mailer }) {
     const draft = Number.isInteger(id) ? repos.outreach.get(id) : null;
     if (!draft) return notFound(req, res);
     return res.status(status).render('pages/owner-draft', {
-      businessName: businessName(), csrfToken: res.locals.csrfToken, draft, notice: notice(req), error: null, text: null, ...over,
+      businessName: businessName(), csrfToken: res.locals.csrfToken, draft, notice: notice(req), error: null, text: null, active: 'clients', ...over,
     });
   }
   router.get('/clients/drafts/:id', (req, res) => renderDraft(req, res));

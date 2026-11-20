@@ -1,212 +1,197 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Client Finder · <%= businessName %></title>
-  <link rel="stylesheet" href="/css/app.css">
-</head>
-<body>
-  <main class="wide">
-    <a class="back" href="/owner">← Dashboard</a>
-    <h1>Client Finder</h1>
-    <p class="slate">Write a short message to someone you’d like to hear from again, or to a new contact. Liaisa drafts it. You edit it and press send. Nothing goes out by itself.</p>
-    <% if (notice) { %>
-      <p class="banner tone-<%= notice[0] === 'ok' ? 'done' : 'problem' %>" role="<%= notice[0] === 'ok' ? 'status' : 'alert' %>"><%= notice[1] %></p>
-    <% } %>
+<%- include('../partials/head', { title: 'Client Finder · ' + businessName }) %>
+<%- include('../partials/owner-open', { active: 'clients', businessName: businessName, csrfToken: csrfToken, pending: pending }) %>
+<div class="page-head"><h1>Clients</h1></div>
+<p class="slate">Write a short message to someone you’d like to hear from again, or to a new contact. Liaisa drafts it. You edit it and press send. Nothing goes out by itself.</p>
+<% if (notice) { %>
+  <p class="banner tone-<%= notice[0] === 'ok' ? 'done' : 'problem' %>" role="<%= notice[0] === 'ok' ? 'status' : 'alert' %>"><%= notice[1] %></p>
+<% } %>
 
-    <nav class="tabs" aria-label="Client Finder">
-      <a href="/owner/clients?tab=reconnect"<%- tab === 'reconnect' ? ' aria-current="page"' : '' %>>Reconnect</a>
-      <a href="/owner/clients?tab=leads"<%- tab === 'leads' ? ' aria-current="page"' : '' %>>New leads</a>
-      <a href="/owner/clients?tab=find"<%- tab === 'find' ? ' aria-current="page"' : '' %>>Find clients</a>
-    </nav>
-    <p class="slate small">Drafts today: <%= draftsToday %> of <%= cap %></p>
+<nav class="tabs" aria-label="Client Finder">
+  <a href="/owner/clients?tab=reconnect"<%- tab === 'reconnect' ? ' aria-current="page"' : '' %>>Reconnect</a>
+  <a href="/owner/clients?tab=leads"<%- tab === 'leads' ? ' aria-current="page"' : '' %>>New leads</a>
+  <a href="/owner/clients?tab=find"<%- tab === 'find' ? ' aria-current="page"' : '' %>>Find clients</a>
+</nav>
+<p class="slate small">Drafts today: <%= draftsToday %> of <%= cap %></p>
+<% var STATUS = { new: 'New', drafted: 'Drafted', sent: 'Sent', replied: 'Replied', not_interested: 'Not interested' }; %>
 
-    <% if (tab === 'reconnect') { %>
-      <section class="section" aria-labelledby="rc-h">
-        <h2 id="rc-h">Past customers</h2>
-        <% if (rows.length === 0) { %>
-          <p class="slate">No past customers to reconnect with yet. People whose quote was accepted, declined, expired or went quiet will appear here.</p>
-        <% } else { %>
-          <table class="list">
-            <thead><tr><th scope="col">Customer</th><th scope="col">Last service</th><th scope="col">Outcome</th><th scope="col">Why now</th><th scope="col">Message</th></tr></thead>
-            <tbody>
-              <% rows.forEach(function (r) { %>
-                <tr>
-                  <td><strong><%= r.name %></strong><br><span class="slate small"><%= r.channel === 'whatsapp' ? 'WhatsApp' : 'Email' %></span></td>
-                  <td><%= r.service || '—' %><% if (r.eventDate) { %><br><span class="slate small"><%= formatDate(r.eventDate) %></span><% } %></td>
-                  <td><span class="badge tone-<%= r.outcome.code === 'accepted' ? 'done' : 'neutral' %>"><%= r.outcome.label %></span></td>
-                  <td><%= r.reason.text %><% if (r.lastContact) { %><br><span class="slate small">Last contacted <%= timeAgo(r.lastContact, now) %></span><% } %></td>
-                  <td>
-                    <% if (r.block) { %>
-                      <span class="slate small"><%= r.block.text %></span>
-                    <% } else { %>
-                      <div class="actions">
-                        <form method="post" action="/owner/clients/draft">
-                          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                          <input type="hidden" name="type" value="customer">
-                          <input type="hidden" name="ref" value="<%= r.key %>">
-                          <button class="btn secondary" type="submit">Draft message<span class="sr"> for <%= r.name %></span></button>
-                        </form>
-                        <form method="post" action="/owner/clients/dnc">
-                          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                          <input type="hidden" name="type" value="customer">
-                          <input type="hidden" name="ref" value="<%= r.key %>">
-                          <button class="btn danger-text" type="submit" data-confirm="Never contact <%= r.name %> again? No message can be drafted for them." data-confirm-label="Do not contact">Do not contact<span class="sr"> <%= r.name %></span></button>
-                        </form>
-                      </div>
-                    <% } %>
-                  </td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        <% } %>
-      </section>
-    <% } else if (tab === 'find') { %>
-      <% var STATUS = { new: 'New', drafted: 'Drafted', sent: 'Sent', replied: 'Replied', not_interested: 'Not interested' }; %>
-      <section class="section" aria-labelledby="find-h">
-        <h2 id="find-h">Find clients</h2>
-        <p class="banner tone-needs" role="note">Check each contact before you send. You are responsible for what you send.</p>
-        <p class="slate small">Liaisa searches the public web for organisations that could need what you offer. It doesn’t copy pages and it sends nothing. Only your service names, areas and city are shared with the search, never customer details.</p>
-        <form method="post" action="/owner/clients/discover">
-          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <div class="field">
-            <label for="find-service">Service (optional)</label>
-            <select id="find-service" name="service"><option value="">All services</option><% focus.services.forEach(function (s) { %><option value="<%= s %>"><%= s %></option><% }) %></select>
-          </div>
-          <div class="field">
-            <label for="find-area">Area (optional)</label>
-            <select id="find-area" name="area"><option value="">All areas</option><% focus.areas.forEach(function (a) { %><option value="<%= a %>"><%= a %></option><% }) %></select>
-          </div>
-          <button class="btn" type="submit">Find clients</button>
-        </form>
-        <p class="slate small">Searches today: <%= searchesToday %> · Finds today: <%= runsToday %> of <%= discoveryCap %></p>
-      </section>
+<%# One person's buttons: Draft message and Do not contact (or why they can't be drafted for). %>
+<% var actionsFor = function (kind, id, name, block, tabName) { return { kind: kind, id: id, name: name, block: block, tabName: tabName }; }; %>
 
-      <section class="section" aria-labelledby="found-h">
-        <h2 id="found-h">Organisations found</h2>
-        <% if (found.length === 0) { %>
-          <p class="slate">Nothing yet. Press Find clients to look for organisations near you.</p>
-        <% } else { %>
-          <ul class="cards">
-            <% found.forEach(function (l) { %>
-              <li class="card">
-                <h3><%= l.name %> <span class="badge tone-<%= l.status === 'replied' ? 'done' : l.status === 'not_interested' ? 'neutral' : 'progress' %>"><%= STATUS[l.status] %></span></h3>
-                <p class="slate small"><%= l.orgType %></p>
-                <p><%= l.whyFit %></p>
-                <p class="small">Source: <a href="<%= l.sourceUrl %>" target="_blank" rel="noopener noreferrer"><%= l.sourceDomain %></a></p>
-                <p class="small"><%= l.publicContact ? 'Contact: ' + l.publicContact : 'No public contact listed.' %></p>
-                <% if (l.lastContact) { %><p class="slate small">Last contacted <%= timeAgo(l.lastContact, now) %></p><% } %>
-                <% if (l.block) { %><p class="slate small"><%= l.block.text %></p><% } %>
-                <div class="actions">
-                  <% if (!l.block) { %>
-                    <form method="post" action="/owner/clients/draft">
-                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                      <input type="hidden" name="type" value="lead">
-                      <input type="hidden" name="ref" value="<%= l.id %>">
-                      <input type="hidden" name="tab" value="find">
-                      <button class="btn secondary" type="submit">Draft message<span class="sr"> for <%= l.name %></span></button>
-                    </form>
-                  <% } %>
-                  <% if (l.status !== 'not_interested') { %>
-                    <% if (l.status !== 'replied') { %>
-                      <form method="post" action="/owner/clients/leads/<%= l.id %>/status">
-                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                        <input type="hidden" name="action" value="replied">
-                        <button class="btn text" type="submit">Mark replied<span class="sr"> for <%= l.name %></span></button>
-                      </form>
-                    <% } %>
-                    <form method="post" action="/owner/clients/leads/<%= l.id %>/status">
-                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                      <input type="hidden" name="action" value="not_interested">
-                      <button class="btn danger-text" type="submit">Not interested<span class="sr"> in <%= l.name %></span></button>
-                    </form>
-                  <% } %>
-                </div>
-              </li>
-            <% }) %>
-          </ul>
-        <% } %>
-      </section>
+<% if (tab === 'reconnect') { %>
+  <section class="section" aria-labelledby="rc-h">
+    <h2 id="rc-h">Past customers</h2>
+    <% if (rows.length === 0) { %>
+      <div class="empty"><strong>No past customers to reconnect with yet.</strong>People whose quote was accepted, declined, expired or went quiet will appear here.</div>
     <% } else { %>
-      <section class="section" aria-labelledby="add-h">
-        <h2 id="add-h">Add a lead</h2>
-        <form method="post" action="/owner/clients/leads" novalidate>
-          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <div class="field">
-            <label for="lead-name">Name</label>
-            <input id="lead-name" name="name" type="text" maxlength="120" value="<%= values.name || '' %>"<%- errors.name ? ' aria-invalid="true" aria-describedby="err-name"' : '' %>>
-            <% if (errors.name) { %><p class="field-error" id="err-name"><%= errors.name %></p><% } %>
-          </div>
-          <div class="field">
-            <label for="lead-contact">Email or WhatsApp number</label>
-            <input id="lead-contact" name="contact" type="text" maxlength="200" value="<%= values.contact || '' %>"<%- errors.contact ? ' aria-invalid="true" aria-describedby="err-contact"' : '' %>>
-            <% if (errors.contact) { %><p class="field-error" id="err-contact"><%= errors.contact %></p><% } %>
-          </div>
-          <div class="field">
-            <label for="lead-note">Who are they? (one line)</label>
-            <input id="lead-note" name="note" type="text" maxlength="200" value="<%= values.note || '' %>"<%- errors.note ? ' aria-invalid="true" aria-describedby="err-note"' : '' %>>
-            <% if (errors.note) { %><p class="field-error" id="err-note"><%= errors.note %></p><% } %>
-          </div>
-          <button class="btn" type="submit">Add lead</button>
-        </form>
-      </section>
-
-      <section class="section" aria-labelledby="leads-h">
-        <h2 id="leads-h">Your leads</h2>
-        <% if (leads.length === 0) { %>
-          <p class="slate">No leads yet. Add someone you know or have met, one at a time.</p>
-        <% } else { %>
-          <table class="list">
-            <thead><tr><th scope="col">Name</th><th scope="col">Contact</th><th scope="col">Note</th><th scope="col">Status</th><th scope="col">Message</th></tr></thead>
-            <tbody>
-              <% leads.forEach(function (l) { %>
-                <tr>
-                  <td><strong><%= l.name %></strong></td>
-                  <td><%= l.email || l.phone %><br><span class="slate small"><%= l.channel === 'whatsapp' ? 'WhatsApp' : 'Email' %></span></td>
-                  <td><%= l.note %><% if (l.lastContact) { %><br><span class="slate small">Last contacted <%= timeAgo(l.lastContact, now) %></span><% } %></td>
-                  <td><span class="badge tone-progress"><%= { new: 'New', drafted: 'Drafted', sent: 'Sent', replied: 'Replied', not_interested: 'Not interested' }[l.status] %></span></td>
-                  <td>
-                    <% if (l.block) { %>
-                      <span class="slate small"><%= l.block.text %></span>
-                    <% } else { %>
-                      <div class="actions">
-                        <form method="post" action="/owner/clients/draft">
-                          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                          <input type="hidden" name="type" value="lead">
-                          <input type="hidden" name="ref" value="<%= l.id %>">
-                          <button class="btn secondary" type="submit">Draft message<span class="sr"> for <%= l.name %></span></button>
-                        </form>
-                        <form method="post" action="/owner/clients/dnc">
-                          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                          <input type="hidden" name="type" value="lead">
-                          <input type="hidden" name="ref" value="<%= l.id %>">
-                          <button class="btn danger-text" type="submit" data-confirm="Never contact <%= l.name %>? No message can be drafted for them." data-confirm-label="Do not contact">Do not contact<span class="sr"> <%= l.name %></span></button>
-                        </form>
-                      </div>
-                    <% } %>
-                  </td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        <% } %>
-      </section>
+      <ul class="cards">
+        <% rows.forEach(function (r) { %>
+          <li class="card"><div class="person">
+            <h3><strong><%= r.name %></strong> <span class="chip tone-<%= r.outcome.code === 'accepted' ? 'done' : 'neutral' %>"><%= r.outcome.label %></span></h3>
+            <p class="slate small"><%= r.channel === 'whatsapp' ? 'WhatsApp' : 'Email' %></p>
+            <p><%= r.service || '—' %><% if (r.eventDate) { %> <span class="slate small">· <%= formatDate(r.eventDate) %></span><% } %></p>
+            <p><span class="slate small">Why now:</span> <%= r.reason.text %><% if (r.lastContact) { %><br><span class="slate small">Last contacted <%= timeAgo(r.lastContact, now) %></span><% } %></p>
+            <% if (r.block) { %>
+              <p class="slate small"><%= r.block.text %></p>
+            <% } else { %>
+              <div class="actions">
+                <form method="post" action="/owner/clients/draft">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input type="hidden" name="type" value="customer">
+                  <input type="hidden" name="ref" value="<%= r.key %>">
+                  <button class="btn secondary" type="submit">Draft message<span class="sr"> for <%= r.name %></span></button>
+                </form>
+                <form method="post" action="/owner/clients/dnc">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input type="hidden" name="type" value="customer">
+                  <input type="hidden" name="ref" value="<%= r.key %>">
+                  <button class="btn danger-text" type="submit" data-confirm="Never contact <%= r.name %> again? No message can be drafted for them." data-confirm-label="Do not contact">Do not contact<span class="sr"> <%= r.name %></span></button>
+                </form>
+              </div>
+            <% } %>
+          </div></li>
+        <% }) %>
+      </ul>
     <% } %>
+  </section>
 
-    <section class="section" aria-labelledby="act-h">
-      <h2 id="act-h">Activity</h2>
-      <% if (activity.length === 0) { %>
-        <p class="slate">Nothing sent yet.</p>
-      <% } else { %>
-        <ul class="rows small">
-          <% activity.forEach(function (a) { %><li><%= a.name %> · <%= a.channel === 'whatsapp' ? 'WhatsApp' : 'email' %> · <%= a.status %> · <%= timeAgo(a.at, now) %></li><% }) %>
-        </ul>
-      <% } %>
-    </section>
-  </main>
-  <%- include('../partials/confirm-dialog') %>
-  <script src="/js/owner.js" defer></script>
-</body>
-</html>
+<% } else if (tab === 'find') { %>
+  <section class="section" aria-labelledby="find-h">
+    <h2 id="find-h">Find clients</h2>
+    <p class="banner tone-needs" role="note">Check each contact before you send. You are responsible for what you send.</p>
+    <div class="card">
+      <p class="slate small">Liaisa searches the public web for organisations that could need what you offer. It doesn’t copy pages and it sends nothing. Only your service names, areas and city are shared with the search, never customer details.</p>
+      <form method="post" action="/owner/clients/discover">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field">
+          <label for="find-service">Service (optional)</label>
+          <select id="find-service" name="service"><option value="">All services</option><% focus.services.forEach(function (s) { %><option value="<%= s %>"><%= s %></option><% }) %></select>
+        </div>
+        <div class="field">
+          <label for="find-area">Area (optional)</label>
+          <select id="find-area" name="area"><option value="">All areas</option><% focus.areas.forEach(function (a) { %><option value="<%= a %>"><%= a %></option><% }) %></select>
+        </div>
+        <button class="btn lg block" type="submit">Find clients</button>
+      </form>
+      <p class="slate small">Searches today: <%= searchesToday %> · Finds today: <%= runsToday %> of <%= discoveryCap %></p>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="found-h">
+    <h2 id="found-h">Organisations found</h2>
+    <% if (found.length === 0) { %>
+      <div class="empty"><strong>Nothing yet.</strong>Press Find clients to look for organisations near you.</div>
+    <% } else { %>
+      <ul class="cards">
+        <% found.forEach(function (l) { %>
+          <li class="card"><div class="person">
+            <h3><%= l.name %> <span class="chip tone-<%= l.status === 'replied' ? 'done' : l.status === 'not_interested' ? 'neutral' : 'progress' %>"><%= STATUS[l.status] %></span></h3>
+            <p class="slate small"><%= l.orgType %></p>
+            <p><%= l.whyFit %></p>
+            <p class="small">Source: <a href="<%= l.sourceUrl %>" target="_blank" rel="noopener noreferrer"><%= l.sourceDomain %></a></p>
+            <p class="small"><%= l.publicContact ? 'Contact: ' + l.publicContact : 'No public contact listed.' %></p>
+            <% if (l.lastContact) { %><p class="slate small">Last contacted <%= timeAgo(l.lastContact, now) %></p><% } %>
+            <% if (l.block) { %><p class="slate small"><%= l.block.text %></p><% } %>
+            <div class="actions">
+              <% if (!l.block) { %>
+                <form method="post" action="/owner/clients/draft">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input type="hidden" name="type" value="lead">
+                  <input type="hidden" name="ref" value="<%= l.id %>">
+                  <input type="hidden" name="tab" value="find">
+                  <button class="btn secondary" type="submit">Draft message<span class="sr"> for <%= l.name %></span></button>
+                </form>
+              <% } %>
+              <% if (l.status !== 'not_interested') { %>
+                <% if (l.status !== 'replied') { %>
+                  <form method="post" action="/owner/clients/leads/<%= l.id %>/status">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <input type="hidden" name="action" value="replied">
+                    <button class="btn text" type="submit">Mark replied<span class="sr"> for <%= l.name %></span></button>
+                  </form>
+                <% } %>
+                <form method="post" action="/owner/clients/leads/<%= l.id %>/status">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input type="hidden" name="action" value="not_interested">
+                  <button class="btn danger-text" type="submit">Not interested<span class="sr"> in <%= l.name %></span></button>
+                </form>
+              <% } %>
+            </div>
+          </div></li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </section>
+
+<% } else { %>
+  <section class="section" aria-labelledby="add-h">
+    <h2 id="add-h">Add a lead</h2>
+    <form method="post" action="/owner/clients/leads" class="card" novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="lead-name">Name</label>
+        <input id="lead-name" name="name" type="text" maxlength="120" autocomplete="off" value="<%= values.name || '' %>"<%- errors.name ? ' aria-invalid="true" aria-describedby="err-name"' : '' %>>
+        <% if (errors.name) { %><p class="field-error" id="err-name"><%= errors.name %></p><% } %>
+      </div>
+      <div class="field">
+        <label for="lead-contact">Email or WhatsApp number</label>
+        <input id="lead-contact" name="contact" type="text" maxlength="200" autocomplete="off" value="<%= values.contact || '' %>"<%- errors.contact ? ' aria-invalid="true" aria-describedby="err-contact"' : '' %>>
+        <% if (errors.contact) { %><p class="field-error" id="err-contact"><%= errors.contact %></p><% } %>
+      </div>
+      <div class="field">
+        <label for="lead-note">Who are they? (one line)</label>
+        <input id="lead-note" name="note" type="text" maxlength="200" value="<%= values.note || '' %>"<%- errors.note ? ' aria-invalid="true" aria-describedby="err-note"' : '' %>>
+        <% if (errors.note) { %><p class="field-error" id="err-note"><%= errors.note %></p><% } %>
+      </div>
+      <button class="btn lg block" type="submit">Add lead</button>
+    </form>
+  </section>
+
+  <section class="section" aria-labelledby="leads-h">
+    <h2 id="leads-h">Your leads</h2>
+    <% if (leads.length === 0) { %>
+      <div class="empty"><strong>No leads yet.</strong>Add someone you know or have met, one at a time.</div>
+    <% } else { %>
+      <ul class="cards">
+        <% leads.forEach(function (l) { %>
+          <li class="card"><div class="person">
+            <h3><strong><%= l.name %></strong> <span class="chip tone-progress"><%= STATUS[l.status] %></span></h3>
+            <p class="small"><%= l.email || l.phone %> <span class="slate">· <%= l.channel === 'whatsapp' ? 'WhatsApp' : 'Email' %></span></p>
+            <p><%= l.note %><% if (l.lastContact) { %><br><span class="slate small">Last contacted <%= timeAgo(l.lastContact, now) %></span><% } %></p>
+            <% if (l.block) { %>
+              <p class="slate small"><%= l.block.text %></p>
+            <% } else { %>
+              <div class="actions">
+                <form method="post" action="/owner/clients/draft">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input type="hidden" name="type" value="lead">
+                  <input type="hidden" name="ref" value="<%= l.id %>">
+                  <button class="btn secondary" type="submit">Draft message<span class="sr"> for <%= l.name %></span></button>
+                </form>
+                <form method="post" action="/owner/clients/dnc">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input type="hidden" name="type" value="lead">
+                  <input type="hidden" name="ref" value="<%= l.id %>">
+                  <button class="btn danger-text" type="submit" data-confirm="Never contact <%= l.name %>? No message can be drafted for them." data-confirm-label="Do not contact">Do not contact<span class="sr"> <%= l.name %></span></button>
+                </form>
+              </div>
+            <% } %>
+          </div></li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </section>
+<% } %>
+
+<section class="section" aria-labelledby="act-h">
+  <h2 id="act-h">Activity</h2>
+  <% if (activity.length === 0) { %>
+    <div class="empty">Nothing sent yet.</div>
+  <% } else { %>
+    <div class="card">
+      <ul class="rows small">
+        <% activity.forEach(function (a) { %><li><%= a.name %> · <%= a.channel === 'whatsapp' ? 'WhatsApp' : 'email' %> · <%= a.status %> · <%= timeAgo(a.at, now) %></li><% }) %>
+      </ul>
+    </div>
+  <% } %>
+</section>
+<%- include('../partials/owner-close') %>

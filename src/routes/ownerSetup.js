@@ -48,7 +48,7 @@ export function ownerSetupRoutes({ repos, config }) {
     };
     const n = typeof req.query.n === 'string' && Object.hasOwn(NOTICES, req.query.n) ? NOTICES[req.query.n] : null;
     res.status(status).render('pages/owner-setup', {
-      businessName: businessName(), csrfToken: res.locals.csrfToken, v: view, errors, notice: n,
+      businessName: businessName(), csrfToken: res.locals.csrfToken, v: view, errors, notice: n, active: 'setup',
       limits: { services: MAX_SERVICES, areas: MAX_AREAS },
     });
   }

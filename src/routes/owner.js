@@ -103,6 +103,11 @@ export function ownerRoutes({ config, repos, mailer = null, ai = null }) {
     return res.redirect(302, '/owner/login');
   });
   router.use(csrf);
+  // The badge on the Approvals tab: how many quotes wait for the owner (every owner page shows it).
+  router.use((req, res, next) => {
+    res.locals.pending = repos.enquiries.list().filter((e) => ['awaiting_approval', 'needs_owner'].includes(e.status)).length;
+    next();
+  });
 
   router.use(ownerEnquiryRoutes({ repos, config, mailer }));
   router.use(ownerSetupRoutes({ repos, config }));

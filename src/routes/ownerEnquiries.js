@@ -133,6 +133,7 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
     if (!model) return notFound(req, res);
     const link = model.estimate?.quoteToken ? quoteUrl(config, model.estimate.quoteToken) : null;
     return res.status(status).render('pages/owner-enquiry', {
+      active: 'approvals', pending: dashboardSummary(deps()).needsYou.filter((n) => ['approval', 'review'].includes(n.kind)).length,
       ...model, businessName: businessName(), csrfToken: res.locals.csrfToken, inr: money, formatDate, timeAgo, unitLabel, edit,
       rows: model.estimate ? describeLines(model.estimate.lineItemsJson, repos.businessSettings.get()?.currencySymbol ?? '₹') : [],
       notice: notice(req), quoteLink: link,

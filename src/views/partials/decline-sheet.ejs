@@ -1,0 +1,15 @@
+<dialog class="sheet-dialog" id="<%= sheetId %>" aria-labelledby="<%= sheetId %>-t">
+  <form method="post" action="/owner/enquiries/<%= enquiryId %>/decline">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <p class="dialog-title" id="<%= sheetId %>-t">Decline <%= customerName %>?</p>
+    <p class="slate small">Nothing is sent to them. You can add a short reason for your own records.</p>
+    <div class="field">
+      <label for="<%= sheetId %>-reason">Reason (optional)</label>
+      <textarea id="<%= sheetId %>-reason" name="reason" rows="2" maxlength="200"></textarea>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn secondary" type="button" data-close data-no-busy>Cancel</button>
+      <button class="btn danger" type="submit">Decline</button>
+    </div>
+  </form>
+</dialog>

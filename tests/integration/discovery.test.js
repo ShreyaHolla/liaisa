@@ -28,7 +28,7 @@ test('the Find clients tab needs the owner login and shows the responsibility no
   assert.match(page.text, /<option value="Veg buffet">/);
   assert.match(page.text, /<option value="Whitefield">/);
   assert.match(page.text, /Searches today: 0 · Finds today: 0 of 10/);
-  assert.match(page.text, /Nothing yet\. Press Find clients/);
+  assert.match(page.text, /Nothing yet\.<\/strong>Press Find clients/);
   assert.equal(ctx.ai.calls.length, 0, 'opening the page makes no call');
 });
 
