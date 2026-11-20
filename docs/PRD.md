@@ -588,6 +588,15 @@ Run `npm run eval` **only** after a prompt or model change (`Rules.md` rule 37).
 
 ---
 
+### M14 — Multi-business: what is next (out of scope for M14)
+M14 made Liaisa multi-tenant in memory: businesses sign up at `/signup`, each with its own owner login, settings, services, prices, enquiries, quotes, leads and follow-ups, under `/b/<slug>/…`. Data still resets on restart. Not built, and the next steps in this order:
+1. **Email verification** at signup (a link that must be opened before the business goes public), so nobody can sign up with someone else's address.
+2. **Password reset** by emailed one-time link (needs verified emails first).
+3. **MySQL repos** replacing the in-memory registry (same method names; every table gets `business_id` and every query is scoped by it).
+4. **Payments / plans** (what a business pays for, per-business AI budgets tied to the plan instead of the `NEW_BUSINESS_*` defaults).
+5. **Custom domains per business** (CNAME to the host, a domain-to-slug lookup; needs DNS and certificate handling, so it is a decision to take first).
+6. Owner team members (more than one login per business) and per-business sender identity for email.
+
 ## 13. Risks and open questions
 
 | Risk / question | Mitigation |

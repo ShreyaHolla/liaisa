@@ -27,13 +27,23 @@ info:
 
     ## Auth (owner routes)
     Session cookie `liaisa.sid` (HttpOnly, Secure in production, SameSite=Lax) set by
-    `POST /owner/login`. Every owner POST also needs the CSRF token: form field `_csrf`
+    `POST /owner/login` or `POST /signup`. The session holds `ownerId` and `businessId`.
+
+    ## Multiple businesses
+    Each business has its own owner login, settings, services, prices, enquiries, quotes, leads and follow-ups.
+    **Owner routes find the business from the session only, never from a path, query or body parameter.** An id that
+    belongs to another business (enquiry, draft, lead) is simply not found: **404**, the same as an id that does not
+    exist. Customer pages live under `/b/{slug}/…`; the signed links at `/a/{token}` carry the business id inside
+    the signature. Ids are unique across businesses. Every owner POST also needs the CSRF token: form field `_csrf`
     or header `X-CSRF-Token`. Missing session → 302 to /owner/login (HTML) or 401 (JSON).
 
     ## Rate limits
     Per IP, return 429 with `Retry-After` (seconds): enquiry start 3/hour, enquiry reply
-    10/hour, contact 5/hour, owner login 5/15 min. Global AI caps never return 429 to
-    customers; they switch the response to `fallback`.
+    10/hour (both across all businesses together), contact 5/hour, owner login 5/15 min, signup 10/hour.
+    AI caps never return 429 to customers; they switch the response to `fallback` with the message
+    "AI is resting for today, the form still works." The caps are per business (`AI_DAILY_REQUEST_CAP` for the
+    demo, `NEW_BUSINESS_AI_DAILY_CAP` / `NEW_BUSINESS_DRAFT_DAILY_CAP` / `NEW_BUSINESS_DISCOVERY_DAILY_CAP` for
+    businesses that sign up) and global (`AI_GLOBAL_DAILY_CAP`, all businesses together).
 servers:
   - url: https://liaisa.co.in
     description: Production (GoDaddy Node.js Hosting)
@@ -95,7 +105,9 @@ paths:
         '400': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/RateLimited' }
 
-  /api/enquiries:
+  /b/{slug}/api/enquiries:
+    parameters:
+      - $ref: '#/components/parameters/Slug'
     post:
       tags: [enquiries]
       summary: Start an enquiry and run the first agent turn (F4)
@@ -137,7 +149,9 @@ paths:
         '400': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/RateLimited' }
 
-  /api/enquiries/{publicId}/reply:
+  /b/{slug}/api/enquiries/{publicId}/reply:
+    parameters:
+      - $ref: '#/components/parameters/Slug'
     post:
       tags: [enquiries]
       summary: Customer answers Liaisa's question; runs the next agent turn (F4)
@@ -162,7 +176,9 @@ paths:
         '409': { $ref: '#/components/responses/Conflict' }
         '429': { $ref: '#/components/responses/RateLimited' }
 
-  /api/enquiries/{publicId}/form:
+  /b/{slug}/api/enquiries/{publicId}/form:
+    parameters:
+      - $ref: '#/components/parameters/Slug'
     post:
       tags: [enquiries]
       summary: Structured fallback form (F10)
@@ -193,7 +209,9 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
-  /q/{token}/accept:
+  /b/{slug}/q/{token}/accept:
+    parameters:
+      - $ref: '#/components/parameters/Slug'
     post:
       tags: [quotes]
       summary: Customer accepts the quote (F7)
@@ -210,7 +228,9 @@ paths:
         '409': { $ref: '#/components/responses/Conflict' }
         '410': { $ref: '#/components/responses/QuoteExpired' }
 
-  /q/{token}/question:
+  /b/{slug}/q/{token}/question:
+    parameters:
+      - $ref: '#/components/parameters/Slug'
     post:
       tags: [quotes]
       summary: Customer asks a question about the quote (F7)
@@ -234,7 +254,9 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '410': { $ref: '#/components/responses/QuoteExpired' }
 
-  /q/{token}/decline:
+  /b/{slug}/q/{token}/decline:
+    parameters:
+      - $ref: '#/components/parameters/Slug'
     post:
       tags: [quotes]
       summary: Customer declines the quote (F7)
@@ -259,23 +281,101 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
-  /owner/login:
+  /enquire:
+    get:
+      tags: [enquiries]
+      summary: 'Old single-business address: redirects (302) to the demo business, /b/mehfil-kitchen/enquire'
+      responses:
+        '302': { description: Redirect to /b/mehfil-kitchen/enquire }
+
+  /b/{slug}/enquire:
+    parameters:
+      - $ref: '#/components/parameters/Slug'
+    get:
+      tags: [enquiries]
+      summary: "A business's public enquiry page (HTML), with that business's name, services and areas"
+      responses:
+        '200': { description: The page }
+        '404': { description: Unknown slug (plain text) }
+
+  /b/{slug}/q/{token}:
+    parameters:
+      - $ref: '#/components/parameters/Slug'
+      - { name: token, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [quotes]
+      summary: "The customer's quote page. A token only works under the slug of the business that issued it"
+      responses:
+        '200': { description: The page }
+        '404': { description: Wrong token, or a token from another business (always the same plain 404) }
+
+  /signup:
+    get:
+      tags: [owner]
+      summary: 'Sign up your business (HTML). The page says: Demo environment, data may reset'
+      responses:
+        '200': { description: The form }
     post:
       tags: [owner]
-      summary: Owner login (F9)
-      description: Compares with OWNER_PASSWORD_HASH (bcrypt). Rotates session ID on success.
+      summary: Create a business from the starter template and log its owner in
+      description: |
+        Creates a business (slug from the name, made unique with `-2`, `-3`…) with two example services and two areas to
+        edit, and an owner (password stored as bcrypt cost 12). Logs the owner in (session ID rotated) and redirects to
+        `/owner/setup`, which shows a short checklist ("Set your prices", "Share your link").
+        Needs the CSRF field `_csrf` from the form. A hidden `website` field is a honeypot: when filled the response
+        looks successful and nothing is created. In-memory demo: businesses are capped (`MAX_BUSINESSES`, default 50)
+        and data resets on restart. Limited to 10 posts per IP per hour.
       requestBody:
         required: true
         content:
           application/x-www-form-urlencoded:
             schema:
               type: object
-              required: [password]
+              required: [businessName, ownerName, email, password, city]
               properties:
+                businessName: { type: string, minLength: 2, maxLength: 80 }
+                ownerName: { type: string, minLength: 2, maxLength: 80 }
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, minLength: 10, maxLength: 200 }
+                city: { type: string, minLength: 2, maxLength: 60 }
+                website: { type: string, description: Honeypot. Leave empty. }
+      responses:
+        '302': { description: 'Created → /owner/setup (sets liaisa.sid)' }
+        '303': { description: Honeypot filled → /owner/login (nothing created) }
+        '400': { description: 'Validation errors, shown per field (HTML)' }
+        '403': { description: CSRF token missing or wrong }
+        '409': { description: 'That email already has an account. Log in instead.' }
+        '429': { description: Too many signups from this IP }
+        '503': { description: The demo is full (business cap reached), or the owner area is switched off }
+
+  /owner/login:
+    get:
+      tags: [owner]
+      summary: Login page (HTML). Shows the Liaisa wordmark, never a business name
+      responses:
+        '200': { description: The form }
+    post:
+      tags: [owner]
+      summary: Owner login (F9)
+      description: |
+        Looks the owner up by email (case-insensitive) and compares the password with their bcrypt hash. An unknown
+        email and a wrong password give the SAME 401 message. Rotates the session ID on success; the session stores
+        `ownerId` and `businessId`, and every owner route uses that business only. The demo business's owner is the
+        `OWNER_EMAIL` with the existing `OWNER_PASSWORD_HASH` / `OWNER_PASSWORD_HASH_B64`.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, maxLength: 254 }
                 password: { type: string, minLength: 1, maxLength: 200 }
       responses:
         '302': { description: 'Success → /owner (sets liaisa.sid)' }
         '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { description: "That email and password don't match. Try again. (same text for both causes)" }
         '429': { $ref: '#/components/responses/RateLimited' }
 
   /owner/api/summary:
@@ -487,7 +587,7 @@ paths:
   /owner/enquiries/{id}/followup/done:
     post:
       tags: [owner]
-      summary: Mark the follow-up as done: hides it for this quote version (M8-lite)
+      summary: 'Mark the follow-up as done: hides it for this quote version (M8-lite)'
       security: [{ cookieAuth: [], csrfToken: [] }]
       parameters:
         - $ref: '#/components/parameters/EnquiryId'
@@ -507,14 +607,14 @@ paths:
       tags: [owner]
       summary: QR code for the public enquiry link, as an SVG file to print or share
       description: |
-        Generated by the server with the `qrcode` package (no external service). It encodes `BASE_URL` + `/enquire`.
+        Generated by the server with the `qrcode` package (no external service). It encodes `BASE_URL` + `/b/{slug}/enquire` for the logged-in owner's business.
         Also shown inline on the "Share your enquiry link" card on Approvals and at the top of Business setup, next to
         a Copy button and a "Share on WhatsApp" `wa.me` link ("Tell us about your event and get a quote: <link>").
         404 if the link is too long to encode.
       security: [{ cookieAuth: [] }]
       responses:
         '200':
-          description: SVG download (`Content-Disposition: attachment; filename="enquiry-qr.svg"`)
+          description: 'SVG download (`Content-Disposition: attachment; filename="enquiry-qr.svg"`)'
           content:
             image/svg+xml:
               schema: { type: string }
@@ -587,7 +687,8 @@ paths:
       summary: One-tap Approve or Decline from the owner notice email (M12). Shows a confirm page; never acts
       description: |
         `token` is signed with HMAC-SHA256 (key derived from `SESSION_SECRET`, no new secret), valid 24 hours,
-        usable once. No owner session is needed: the signed link is the credential. Sets a double-submit CSRF
+        usable once. The payload carries the `businessId` inside the signature, so a link only ever opens that business's
+        enquiry; an enquiry id that does not exist in that business is 404. No owner session is needed: the signed link is the credential. Sets a double-submit CSRF
         cookie (`liaisa.otc`, HttpOnly, SameSite=Strict, path `/a`). Expired links return 410, tampered or malformed
         400, used or changed quotes 409, each with a friendly page.
       parameters:
@@ -1094,6 +1195,12 @@ components:
       description: Or form field `_csrf` for HTML form posts.
 
   parameters:
+    Slug:
+      name: slug
+      in: path
+      required: true
+      description: The business's public address, made from its name at signup (`mehfil-kitchen` is the demo). Unknown slug → 404.
+      schema: { type: string, pattern: '^[a-z0-9-]{1,48}$' }
     PublicId:
       name: publicId
       in: path
@@ -1314,7 +1421,7 @@ components:
         enquiryStatus: { type: string, enum: [quoted, awaiting_approval] }
         estimateStatus: { type: string, enum: [sent, approved, approved_send_failed] }
         channel: { type: string, enum: [email, whatsapp] }
-        quoteUrl: { type: string, examples: ['https://liaisa.co.in/q/Xy…'] }
+        quoteUrl: { type: string, examples: ['https://liaisa.co.in/b/mehfil-kitchen/q/Xy…'] }
         whatsappUrl: { type: string, description: Present when channel=whatsapp; owner opens it }
 
     WhatsAppLink:
