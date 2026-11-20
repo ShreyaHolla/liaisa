@@ -1,5 +1,6 @@
 // Shared enhancements. Everything works without this file (plain forms, plain links).
 (function () {
+  document.documentElement.classList.add('js');
   // Confirm dialog for buttons with data-confirm (DESIGN §4.5).
   var dialog = document.getElementById('confirm-dialog');
   var pending = null;

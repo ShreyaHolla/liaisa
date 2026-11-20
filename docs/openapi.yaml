@@ -353,9 +353,20 @@ paths:
     post:
       tags: [owner]
       summary: Owner declines the enquiry (F6)
+      description: Optional one-line `reason` (bottom sheet in the Approvals inbox). Kept on the enquiry and shown in Activity.
       security: [{ cookieAuth: [], csrfToken: [] }]
       parameters:
         - $ref: '#/components/parameters/EnquiryId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, maxLength: 200 }
+          application/x-www-form-urlencoded:
+            schema: { type: object }
       responses:
         '200':
           description: Declined
@@ -457,6 +468,110 @@ paths:
         '403': { $ref: '#/components/responses/CsrfFailed' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+
+  /owner/follow-ups:
+    get:
+      tags: [owner]
+      summary: Follow-ups tab (M11). HTML page listing quotes due a reminder
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: HTML page }
+        '302': { description: Not logged in, redirect to /owner/login }
+
+  /owner/approve-clean:
+    get:
+      tags: [owner]
+      summary: Confirmation for "Approve all clean quotes" (M12). Lists exactly what will be approved, names and totals
+      description: |
+        A quote is clean when it is an open draft with zero warnings and a total up to the owner's
+        `bulkApproveLimit` (Business setup; empty = feature off). Quotes with any warning are never listed.
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: HTML page }
+        '302': { description: Not logged in }
+    post:
+      tags: [owner]
+      summary: Approve the listed clean quotes (M12)
+      description: |
+        Body `ids` is what the owner saw. The server re-checks each id and approves only those that are still
+        clean; anything else is skipped. Each approval is logged in Activity. HTML clients get a 303 to
+        `/owner?n=bulk_done&c=<count>`.
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids: { type: array, maxItems: 200, items: { type: integer } }
+          application/x-www-form-urlencoded:
+            schema: { type: object }
+      responses:
+        '200':
+          description: JSON clients
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  approved:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        name: { type: string }
+                        total: { type: integer }
+                        estimateStatus: { type: string, enum: [sent, approved, approved_send_failed] }
+                  skipped: { type: array, items: { type: integer } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+
+  /a/{token}:
+    get:
+      tags: [owner]
+      summary: One-tap Approve or Decline from the owner notice email (M12). Shows a confirm page; never acts
+      description: |
+        `token` is signed with HMAC-SHA256 (key derived from `SESSION_SECRET`, no new secret), valid 24 hours,
+        usable once. No owner session is needed: the signed link is the credential. Sets a double-submit CSRF
+        cookie (`liaisa.otc`, HttpOnly, SameSite=Strict, path `/a`). Expired links return 410, tampered or malformed
+        400, used or changed quotes 409, each with a friendly page.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: HTML confirm page showing the quote and warnings }
+        '400': { description: Malformed or tampered link }
+        '409': { description: Link already used, or the quote changed since the email }
+        '410': { description: Link expired }
+    post:
+      tags: [owner]
+      summary: Confirm the one-tap action (M12). Needs the CSRF cookie and the matching `_csrf` field
+      description: The link is spent before the action runs, so a double tap or replay acts once. Approve uses the same code as Approve & send; both are logged in Activity.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [_csrf]
+              properties:
+                _csrf: { type: string }
+      responses:
+        '200': { description: HTML result page ("Approved and sent" or "Declined") }
+        '400': { description: Malformed or tampered link }
+        '403': { description: CSRF cookie and field do not match }
+        '409': { description: Link already used, or the quote changed }
+        '410': { description: Link expired }
 
   /owner/followups/{id}/whatsapp:
     post:
@@ -1184,6 +1299,14 @@ components:
               followupId: { type: integer }
               customerName: { type: string }
               what: { type: string, examples: ['Veg buffet, 40 · 13 Dec'] }
+              service: { type: [string, 'null'], description: 'approval and review items' }
+              quantity: { type: [integer, 'null'] }
+              unit: { type: [string, 'null'], description: 'Word for the quantity, e.g. guests' }
+              eventDate: { type: [string, 'null'], format: date }
+              channel: { type: string, enum: [email, whatsapp] }
+              version: { type: [integer, 'null'], description: 'Draft estimate version, for Approve' }
+              warnings: { type: array, items: { type: string }, description: 'Plain-language warnings, one chip each' }
+              clean: { type: boolean, description: 'No warnings and total within the owner limit (bulk approve and auto-approve)' }
               label: { type: string, description: Status label from DESIGN.md §7.2 }
               total: { type: integer }
         week:

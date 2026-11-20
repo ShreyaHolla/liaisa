@@ -116,10 +116,11 @@ export function looksPersonal(contact) {
 
 /** Tidy the contact: a valid email, a phone-looking number, or null. */
 export function cleanContact(raw) {
-  const c = (raw ?? '').trim();
+  // "Tel: (080) 4123 4567" and "Phone - 044 2345 6789" are common on contact pages: drop the label.
+  const c = (raw ?? '').trim().replace(/^(?:tel(?:ephone)?|phone|ph|call|mobile|mob|contact|whatsapp)\s*[:.-]?\s*/i, '');
   if (!c) return null;
   if (c.includes('@')) return z.email().max(120).safeParse(c).success ? c.toLowerCase() : null;
-  return /^[+\d][\d\s().-]{6,}$/.test(c) && c.replace(/\D/g, '').length >= 8 ? c : null;
+  return /^[+(\d][\d\s().-]{6,}$/.test(c) && c.replace(/\D/g, '').length >= 8 ? c : null;
 }
 
 const orgKey = (name) => name.toLowerCase().replace(/[^a-z0-9]/g, '');

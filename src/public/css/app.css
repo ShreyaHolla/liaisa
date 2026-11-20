@@ -27,7 +27,7 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
-body { margin: 0; background: var(--cloud); color: var(--ink); font: 400 var(--t-base)/1.55 var(--font); overflow-wrap: anywhere; }
+body { margin: 0; background: var(--cloud); color: var(--ink); font: 400 var(--t-base)/1.55 var(--font); overflow-wrap: break-word; }
 img, svg { max-width: 100%; }
 a { color: var(--plum); }
 h1, h2, h3 { line-height: 1.2; margin: 0 0 var(--s-3); color: var(--plum); }
@@ -113,16 +113,20 @@ legend { font-size: var(--t-sm); font-weight: 500; color: var(--slate); padding:
 /* Public top bar (sticky) */
 .site-bar { position: sticky; top: 0; z-index: 20; background: rgb(255 255 255 / 94%); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
 .site-bar__inner { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); max-width: 72rem; margin: 0 auto; padding: var(--s-2) var(--page-pad); min-height: 56px; }
-.brand { font-family: var(--serif); font-size: var(--t-md); color: var(--plum); text-decoration: none; }
+.brand { font-family: var(--serif); font-size: var(--t-md); color: var(--plum); text-decoration: none; white-space: nowrap; }
 .site-bar nav { display: flex; align-items: center; gap: var(--s-1); }
-.site-bar nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--s-3); color: var(--plum); text-decoration: none; font-weight: 500; border-radius: var(--r-sm); }
+.site-bar nav a { white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--s-3); color: var(--plum); text-decoration: none; font-weight: 500; border-radius: var(--r-sm); }
 .site-bar nav a:hover { background: var(--tint-progress-bg); }
+@media (max-width: 39.99rem) { .site-bar nav a:not([href='/owner/login']) { display: none; } }
 
 /* Landing */
 .hero { padding: var(--s-6) 0 var(--s-5); }
 .hero h1 { font-size: 2rem; line-height: 1.15; max-width: 18ch; }
 .hero .lead { font-size: var(--t-md); color: var(--slate); max-width: 34rem; }
 .hero .cluster { margin-top: var(--s-5); }
+.hero .cluster .btn { flex: 1 1 14rem; }
+@media (min-width: 40rem) { .hero .cluster .btn { flex: 0 0 auto; } }
+.quote-link, .person, .compact .grow, .approval__name { overflow-wrap: anywhere; }
 @media (min-width: 40rem) { .hero { padding: var(--s-8) 0 var(--s-6); } .hero h1 { font-size: var(--t-2xl); max-width: 22ch; } }
 .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); counter-reset: step; }
 .steps li { counter-increment: step; display: grid; grid-template-columns: 40px 1fr; gap: var(--s-3); align-items: start; background: var(--white); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s-4); }
@@ -164,9 +168,13 @@ legend { font-size: var(--t-sm); font-weight: 500; color: var(--slate); padding:
 .action-bar { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; padding: var(--s-3) var(--page-pad); background: rgb(255 255 255 / 96%); border-top: 1px solid var(--line); }
 .action-bar form { margin: 0; flex: 1 1 auto; }
 .action-bar .btn { width: 100%; }
+/* Phones: the main action takes the full width; the other two share the row below it */
+.action-bar > :not(form) { flex: 1 1 calc(50% - var(--s-2)); }
+.action-bar > form:first-child:not(:only-child) { flex: 1 1 100%; }
 .action-bar--sticky { position: sticky; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); z-index: 15; margin: var(--s-5) calc(var(--page-pad) * -1) 0; }
 .action-bar--public { position: sticky; bottom: 0; z-index: 15; margin: var(--s-5) calc(var(--s-4) * -1) calc(var(--s-5) * -1); border-radius: 0 0 var(--r-lg) var(--r-lg); padding-bottom: calc(var(--s-3) + env(safe-area-inset-bottom)); }
-@media (min-width: 64rem) { .action-bar--sticky { position: static; margin: var(--s-5) 0 0; padding: 0; border: 0; background: none; } .action-bar .btn { width: auto; } .action-bar form { flex: 0 0 auto; } }
+@media (min-width: 64rem) { .action-bar > :not(form), .action-bar > form:first-child:not(:only-child) { flex: 0 0 auto; }
+  .action-bar--sticky { position: static; margin: var(--s-5) 0 0; padding: 0; border: 0; background: none; } .action-bar .btn { width: auto; } .action-bar form { flex: 0 0 auto; } }
 @media (min-width: 40rem) { .action-bar--public { margin-left: calc(var(--s-6) * -1); margin-right: calc(var(--s-6) * -1); margin-bottom: calc(var(--s-6) * -1); } }
 
 /* Owner shell: bottom tab bar on phones, sidebar on desktop */
@@ -249,6 +257,8 @@ dialog.sheet-dialog { margin: auto auto 0; width: 100%; max-width: none; border-
 .draft { margin: 0 0 var(--s-3); padding: var(--s-3) var(--s-4); border-left: 3px solid var(--plum); background: var(--cloud); border-radius: 0 var(--r-sm) var(--r-sm) 0; white-space: pre-wrap; }
 .quote-link { word-break: break-all; font-size: var(--t-sm); }
 details.edit { margin-top: var(--s-4); }
+/* With JavaScript the action bar opens these, so the summary only shows once opened */
+.js details.edit--bar:not([open]) { display: none; }
 details.edit summary { cursor: pointer; color: var(--plum); font-weight: 600; min-height: 44px; display: flex; align-items: center; }
 .cols { display: grid; gap: var(--s-4); grid-template-areas: "quote" "conv"; }
 .cols .quote-col { grid-area: quote; } .cols .conv-col { grid-area: conv; }

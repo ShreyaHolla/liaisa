@@ -65,7 +65,7 @@
     <% if (quoteLink) { %><p class="slate small">Quote link: <a class="quote-link" href="<%= quoteLink %>"><%= quoteLink %></a></p><% } %>
 
     <% if (can.edit) { %>
-      <details class="edit" id="edit" <%= Object.keys(edit.errors).length ? 'open' : '' %>>
+      <details class="edit edit--bar" id="edit" <%= Object.keys(edit.errors).length ? 'open' : '' %>>
         <summary>Edit quote</summary>
         <% if (Object.keys(edit.errors).length) { %>
           <div class="notice notice-error" role="alert">

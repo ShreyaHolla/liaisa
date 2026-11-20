@@ -274,3 +274,27 @@ test('pause_turn continues the same search; a missing submit gets one nudge; not
   assert.deepEqual([empty.leads.length, empty.dropped], [0, { source_not_in_results: 1 }]);
   assert.equal(none.repos.leads.all().length, 0);
 });
+
+test('a landline or any phone number is kept when it is on the organisation’s own page; personal-looking numbers elsewhere are still dropped', () => {
+  const own = (contact) => lead({ organisation: 'Brightway Facilities', source_url: 'https://brightway-facilities.example/contact', public_contact: contact });
+  const allowedOwn = new Set([normUrl('https://brightway-facilities.example/contact')]);
+  for (const contact of ['080 4123 4567', '(080) 4123 4567', 'Tel: 080-4123-4567', '+91 80 4123 4567', '1800 123 4567', '+91 98450 12345', 'Phone: 09845012345']) {
+    const { kept, dropped } = filterLeads([own(contact)], allowedOwn, []);
+    assert.equal(kept.length, 1, `${contact} on the organisation’s own page`);
+    assert.deepEqual(dropped, {});
+    assert.ok(kept[0].publicContact, contact);
+  }
+  assert.equal(filterLeads([own('Tel: (080) 4123 4567')], allowedOwn, []).kept[0].publicContact, '(080) 4123 4567', 'the label is dropped');
+
+  // On a directory or listing page (not the organisation's own), numbers that look personal are dropped.
+  const elsewhere = (contact) => lead({ organisation: 'Brightway Facilities', source_url: 'https://city-directory.example/listing/42', public_contact: contact });
+  const allowedElse = new Set([normUrl('https://city-directory.example/listing/42')]);
+  for (const contact of ['+91 98450 12345', '09845012345', '98450 12345', 'brightway@gmail.com', 'ravi@yahoo.in']) {
+    const r = filterLeads([elsewhere(contact)], allowedElse, []);
+    assert.deepEqual([r.kept.length, r.dropped], [0, { personal_contact: 1 }], `${contact} on a directory page`);
+  }
+  // A clearly non-mobile business number is fine on any page.
+  for (const contact of ['044 2345 6789', '1800 123 4567', 'info@brightway-facilities.example']) {
+    assert.equal(filterLeads([elsewhere(contact)], allowedElse, []).kept.length, 1, contact);
+  }
+});

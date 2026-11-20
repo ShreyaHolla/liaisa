@@ -68,7 +68,7 @@
             <input id="svcMax<%= i %>" name="svcMax" type="number" min="1" step="1" inputmode="numeric" value="<%= s.maxQty %>"<%- bad('services.' + i + '.maxQty') %>>
             <%- fe('services.' + i + '.maxQty') %>
           </div>
-          <div class="field">
+          <div class="field wide2">
             <label for="svcUnit<%= i %>">Unit label</label>
             <input id="svcUnit<%= i %>" name="svcUnit" type="text" maxlength="40" value="<%= s.unitLabel %>"<%- bad('services.' + i + '.unitLabel') %>>
             <%- fe('services.' + i + '.unitLabel') %>

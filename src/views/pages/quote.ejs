@@ -27,7 +27,7 @@
           <p class="banner tone-done" role="status">Question sent. <%= biz.businessName %> will reply to you.</p>
         <% } %>
 
-        <details class="edit" id="ask" <%= errors.message ? 'open' : '' %>>
+        <details class="edit edit--bar" id="ask" <%= errors.message ? 'open' : '' %>>
           <summary>Ask a question</summary>
           <form method="post" action="/q/<%= token %>/question">
             <div class="field">
@@ -38,7 +38,7 @@
             <button class="btn secondary" type="submit">Send question</button>
           </form>
         </details>
-        <details class="edit" id="decline">
+        <details class="edit edit--bar" id="decline">
           <summary>Decline this quote</summary>
           <form method="post" action="/q/<%= token %>/decline">
             <label class="check"><input type="checkbox" name="doNotContact" value="on"> Please don’t contact me again about other work</label>
