@@ -44,6 +44,8 @@ try {
   const hash = bcrypt.hashSync(password, COST);
   console.log('\nOWNER_PASSWORD_HASH (keep the single quotes in .env: the hash contains $):\n');
   console.log(`'${hash}'\n`);
+  console.log('Or, if your host mangles the $ characters, use this instead (OWNER_PASSWORD_HASH_B64, no quotes needed):\n');
+  console.log(`${Buffer.from(hash).toString('base64')}\n`);
 } catch (err) {
   console.error(err.message);
   process.exit(1);

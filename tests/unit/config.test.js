@@ -125,3 +125,57 @@ test('production without the owner variables warns instead of failing', () => {
   const c = loadConfig({ NODE_ENV: 'production' });
   assert.match(c.warnings.join('\n'), /owner area/);
 });
+
+// --- OWNER_PASSWORD_HASH_B64: when set, the plain hash is not read at all ---
+const B64 = Buffer.from(HASH).toString('base64');
+
+test('a garbage OWNER_PASSWORD_HASH plus a valid OWNER_PASSWORD_HASH_B64 starts normally, using only the decoded value', () => {
+  for (const garbage of ['not-a-hash', '$2b$ broken', 'plaintext-password-oops', '   ', '$2b$04$short', 'x'.repeat(500)]) {
+    const c = loadConfig({ OWNER_PASSWORD_HASH: garbage, OWNER_PASSWORD_HASH_B64: B64, SESSION_SECRET: SECRET });
+    assert.equal(c.ownerEnabled, true, garbage);
+    assert.equal(c.ownerPasswordHash, HASH, 'the decoded value, never the garbage');
+    assert.deepEqual(c.warnings, []);
+  }
+});
+
+test('OWNER_PASSWORD_HASH_B64 works on its own, in standard or URL-safe base64, with stray whitespace', () => {
+  assert.equal(loadConfig({ OWNER_PASSWORD_HASH_B64: B64, SESSION_SECRET: SECRET }).ownerPasswordHash, HASH);
+  const urlSafe = B64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  assert.equal(loadConfig({ OWNER_PASSWORD_HASH_B64: urlSafe, SESSION_SECRET: SECRET }).ownerPasswordHash, HASH);
+  assert.equal(loadConfig({ OWNER_PASSWORD_HASH_B64: `  ${B64}\n`, SESSION_SECRET: SECRET }).ownerPasswordHash, HASH);
+  const real = '$2b$12$' + 'Ab./1'.repeat(10) + 'Ab.'; // 53 chars after the prefix
+  assert.equal(loadConfig({ OWNER_PASSWORD_HASH_B64: Buffer.from(real).toString('base64'), SESSION_SECRET: SECRET }).ownerPasswordHash, real);
+});
+
+test('a malformed OWNER_PASSWORD_HASH_B64 refuses to start, naming only itself, and a valid plain hash does not rescue it', () => {
+  const notBase64 = '!!! not base64 !!!';
+  const wrongContent = Buffer.from('plaintext-password-oops').toString('base64');
+  throwsNaming({ OWNER_PASSWORD_HASH_B64: notBase64, SESSION_SECRET: SECRET }, 'OWNER_PASSWORD_HASH_B64', notBase64);
+  throwsNaming({ OWNER_PASSWORD_HASH_B64: wrongContent, SESSION_SECRET: SECRET }, 'OWNER_PASSWORD_HASH_B64', wrongContent);
+  // Only the decoded B64 value is checked: the (valid) plain hash is ignored, so this still fails.
+  throwsNaming({ OWNER_PASSWORD_HASH: HASH, OWNER_PASSWORD_HASH_B64: wrongContent, SESSION_SECRET: SECRET }, 'OWNER_PASSWORD_HASH_B64', wrongContent);
+  try {
+    loadConfig({ OWNER_PASSWORD_HASH: 'garbage-plain', OWNER_PASSWORD_HASH_B64: wrongContent, SESSION_SECRET: SECRET });
+    assert.fail('should have thrown');
+  } catch (err) {
+    assert.match(err.message, /OWNER_PASSWORD_HASH_B64/);
+    assert.ok(!/OWNER_PASSWORD_HASH:/.test(err.message.replace(/OWNER_PASSWORD_HASH_B64/g, '')), 'the plain variable is not mentioned at all');
+    assert.ok(!err.message.includes('garbage-plain') && !err.message.includes(wrongContent));
+  }
+});
+
+test('an empty OWNER_PASSWORD_HASH_B64 counts as unset, so the plain hash is used and still validated', () => {
+  assert.equal(loadConfig({ OWNER_PASSWORD_HASH: HASH, OWNER_PASSWORD_HASH_B64: '', SESSION_SECRET: SECRET }).ownerPasswordHash, HASH);
+  throwsNaming({ OWNER_PASSWORD_HASH: 'plaintext-password-oops', OWNER_PASSWORD_HASH_B64: '', SESSION_SECRET: SECRET }, 'OWNER_PASSWORD_HASH', 'plaintext-password-oops');
+});
+
+test('the hash and the secret still come as a pair, with either form of the hash', () => {
+  throwsNaming({ OWNER_PASSWORD_HASH_B64: B64 }, 'SESSION_SECRET', B64);
+  throwsNaming({ SESSION_SECRET: SECRET }, 'OWNER_PASSWORD_HASH', SECRET);
+  assert.equal(loadConfig({ NODE_ENV: 'development' }).ownerEnabled, false);
+});
+
+test('production warning names both forms of the hash when the owner area is off', () => {
+  const c = loadConfig({ NODE_ENV: 'production' });
+  assert.match(c.warnings.join(' '), /OWNER_PASSWORD_HASH_B64 or OWNER_PASSWORD_HASH, and SESSION_SECRET/);
+});

@@ -138,3 +138,18 @@ test('without OWNER_PASSWORD_HASH and SESSION_SECRET every /owner/* path is 503'
   }
   assert.equal((await request(app).post('/owner/login').type('form').send({ password: 'x' })).status, 503);
 });
+
+test('OWNER_PASSWORD_HASH_B64 wins outright: a garbage OWNER_PASSWORD_HASH next to it is ignored and login uses the decoded hash', async () => {
+  const b64 = Buffer.from(HASH).toString('base64');
+  const app = appFor({ OWNER_PASSWORD_HASH: 'garbage-not-a-hash', OWNER_PASSWORD_HASH_B64: b64 });
+  const ok = await attemptLogin(app, PASSWORD);
+  assert.equal(ok.res.status, 302);
+  assert.equal(ok.res.headers.location, '/owner');
+  const bad = await attemptLogin(appFor({ OWNER_PASSWORD_HASH: 'garbage-not-a-hash', OWNER_PASSWORD_HASH_B64: b64 }), 'wrong password');
+  assert.equal(bad.res.status, 401);
+  // A different valid hash in the plain variable is not used either.
+  const other = bcrypt.hashSync('some other password', 4);
+  const app2 = appFor({ OWNER_PASSWORD_HASH: other, OWNER_PASSWORD_HASH_B64: b64 });
+  assert.equal((await attemptLogin(app2, PASSWORD)).res.status, 302);
+  assert.equal((await attemptLogin(appFor({ OWNER_PASSWORD_HASH: other, OWNER_PASSWORD_HASH_B64: b64 }), 'some other password')).res.status, 401);
+});

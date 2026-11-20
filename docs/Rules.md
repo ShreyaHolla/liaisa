@@ -214,3 +214,4 @@ Update after every milestone, real test run and purchase.
 | | | M4 | Sonnet & Haiku | $0.65 | $0 |  | $5.34 |
 | | | M6 | Sonnet & Haiku | $2.17 | $0 |  | $5.34 |
 | | | M7 | Sonnet & Haiku | $3.62 | $0 |  | $5.34 |
+| | | M7 | Sonnet & Haiku | $18.49 | $0 |  | $5.34 |

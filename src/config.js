@@ -5,6 +5,22 @@ const blankToUndefined = (v) => (v === '' ? undefined : v);
 const opt = (type) => z.preprocess(blankToUndefined, type.optional());
 const withDefault = (type, def) => z.preprocess(blankToUndefined, type.default(def));
 
+const BCRYPT = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
+
+/** Base64 (or URL-safe base64) to text, or null when it isn't base64. Never throws, never echoes the value. */
+function decodeB64(value) {
+  const v = value.trim();
+  if (!/^[A-Za-z0-9+/_-]+={0,2}$/.test(v)) return null;
+  return Buffer.from(v.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8').trim();
+}
+
+/**
+ * The owner's bcrypt hash. When OWNER_PASSWORD_HASH_B64 is set, ONLY its decoded value counts and
+ * OWNER_PASSWORD_HASH is not read, validated or used (even if it is malformed). The base64 form exists
+ * because hosts often mangle the `$` characters in a raw bcrypt hash.
+ */
+const ownerHashOf = (env) => (env.OWNER_PASSWORD_HASH_B64 ? decodeB64(env.OWNER_PASSWORD_HASH_B64) : env.OWNER_PASSWORD_HASH);
+
 const bool = (def) =>
   withDefault(z.enum(['true', 'false']), def).transform((v) => v === 'true');
 
@@ -37,7 +53,10 @@ const schema = z
     OWNER_EMAIL: opt(z.string().email()),
     MAIL_FROM: withDefault(z.string(), '"Liaisa" <hello@liaisa.co.in>'),
     // bcrypt hash only (from `npm run hash-password`), never the password itself.
-    OWNER_PASSWORD_HASH: opt(z.string().regex(/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/, 'must be a bcrypt hash (run npm run hash-password)')),
+    // bcrypt hash only (from `npm run hash-password`), never the password itself. Checked in superRefine below,
+    // and only when OWNER_PASSWORD_HASH_B64 is not set.
+    OWNER_PASSWORD_HASH: opt(z.string()),
+    OWNER_PASSWORD_HASH_B64: opt(z.string()),
     SESSION_SECRET: opt(z.string().min(32, 'must be at least 32 characters')),
   })
   .superRefine((env, ctx) => {
@@ -51,13 +70,19 @@ const schema = z
     // A secret is required only when the feature that uses it is switched on.
     if (env.AI_ENABLED && env.AI_MODE === 'live') need(['ANTHROPIC_API_KEY']);
     if (env.MAIL_ENABLED) need(['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'OWNER_EMAIL']);
-    // Owner area: on when both are set, off when neither is. Exactly one is a mistake.
-    if (env.OWNER_PASSWORD_HASH || env.SESSION_SECRET) {
-      for (const name of ['OWNER_PASSWORD_HASH', 'SESSION_SECRET']) {
-        if (!env[name]) {
-          ctx.addIssue({ code: 'custom', path: [name], message: 'is required because the other owner-login variable is set' });
-        }
+    // The hash: the base64 form wins outright; the plain form is only looked at when it is absent.
+    if (env.OWNER_PASSWORD_HASH_B64) {
+      if (!BCRYPT.test(ownerHashOf(env) ?? '')) {
+        ctx.addIssue({ code: 'custom', path: ['OWNER_PASSWORD_HASH_B64'], message: 'must be the base64 of a bcrypt hash (run npm run hash-password)' });
       }
+    } else if (env.OWNER_PASSWORD_HASH && !BCRYPT.test(env.OWNER_PASSWORD_HASH)) {
+      ctx.addIssue({ code: 'custom', path: ['OWNER_PASSWORD_HASH'], message: 'must be a bcrypt hash (run npm run hash-password)' });
+    }
+    // Owner area: on when both are set, off when neither is. Exactly one is a mistake.
+    const hashGiven = Boolean(env.OWNER_PASSWORD_HASH_B64 || env.OWNER_PASSWORD_HASH);
+    if (hashGiven || env.SESSION_SECRET) {
+      if (!hashGiven) ctx.addIssue({ code: 'custom', path: ['OWNER_PASSWORD_HASH'], message: 'is required because the other owner-login variable is set' });
+      if (!env.SESSION_SECRET) ctx.addIssue({ code: 'custom', path: ['SESSION_SECRET'], message: 'is required because the other owner-login variable is set' });
     }
   });
 
@@ -75,14 +100,15 @@ export function loadConfig(env = process.env) {
   const e = result.data;
   const aiLive = e.AI_ENABLED && e.AI_MODE === 'live';
 
-  const ownerEnabled = Boolean(e.OWNER_PASSWORD_HASH && e.SESSION_SECRET);
+  const ownerHash = ownerHashOf(e);
+  const ownerEnabled = Boolean(ownerHash && e.SESSION_SECRET);
 
   const warnings = [];
   if (e.NODE_ENV === 'production') {
     const off = [];
     if (!aiLive) off.push('live AI (set AI_ENABLED=true and AI_MODE=live)');
     if (!e.MAIL_ENABLED) off.push('email sending (set MAIL_ENABLED=true)');
-    if (!ownerEnabled) off.push('owner area (set OWNER_PASSWORD_HASH and SESSION_SECRET)');
+    if (!ownerEnabled) off.push('owner area (set OWNER_PASSWORD_HASH_B64 or OWNER_PASSWORD_HASH, and SESSION_SECRET)');
     if (off.length) warnings.push(`Disabled features in production: ${off.join('; ')}`);
   }
 
@@ -119,7 +145,7 @@ export function loadConfig(env = process.env) {
     ownerEmail: e.OWNER_EMAIL,
     mailFrom: e.MAIL_FROM,
     ownerEnabled,
-    ownerPasswordHash: e.OWNER_PASSWORD_HASH,
+    ownerPasswordHash: ownerHash,
     sessionSecret: e.SESSION_SECRET,
     smtp: { host: e.SMTP_HOST, port: e.SMTP_PORT, user: e.SMTP_USER, pass: e.SMTP_PASS },
     warnings,

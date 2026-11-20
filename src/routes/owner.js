@@ -17,7 +17,7 @@ const MSG = {
   empty: 'Enter your password.',
 };
 
-/** Used when OWNER_PASSWORD_HASH / SESSION_SECRET aren't set: every /owner/* path is 503. */
+/** Used when the owner password hash (OWNER_PASSWORD_HASH_B64 or OWNER_PASSWORD_HASH) / SESSION_SECRET aren't set: every /owner/* path is 503. */
 export function ownerDisabled(req, res) {
   const message = "Owner area isn't set up yet.";
   if (wantsJson(req)) return res.status(503).json(errorBody('owner_disabled', message));
