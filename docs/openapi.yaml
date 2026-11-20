@@ -504,7 +504,7 @@ paths:
   /owner/clients:
     get:
       tags: [owner]
-      summary: Client Finder page (M10-lite). Tabs `?tab=reconnect` (default) and `?tab=leads`
+      summary: Client Finder page (M10-lite, M10b). Tabs `?tab=reconnect` (default), `?tab=leads` and `?tab=find`
       description: |
         HTML page. Reconnect lists past customers chosen by server rules (accepted, declined, quote expired, quiet),
         one row per person, each with a rule-based "why now". People who asked not to be contacted, or were contacted
@@ -542,6 +542,98 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/CsrfFailed' }
         '409': { $ref: '#/components/responses/Conflict' }
+
+  /owner/clients/discover:
+    post:
+      tags: [owner]
+      summary: Find clients with web search (M10b)
+      description: |
+        Claude (model `AI_MODEL_DISCOVERY`, default `claude-haiku-5-5`, chosen because the Models API reports
+        `capabilities.server_tools.web_search.supported`) searches the public web with Anthropic's `web_search_20260209`
+        server tool (`max_uses` 5, `allowed_callers: ["direct"]`, `user_location` = the business city) and submits up
+        to 8 organisations through the `submit_leads` tool. It is told only the service names, areas, city and
+        anonymous enquiry counts per service and area: no customer names or contact details. The server fetches no pages.
+        A lead is kept only if its `source_url` appears in the `web_search_tool_result` URLs or citations of that same
+        response; it is dropped if it is on a social media domain, looks like a private individual, has a mobile number
+        or free personal mailbox as contact (unless the cited page is the organisation's own), or duplicates an existing
+        lead. Results for the same service+area are cached for 6 hours (no new search, not counted). Limits:
+        `CLIENT_DISCOVERY_DAILY_CAP` runs a day (default 10). Search requests are logged in `ai_calls`
+        (`web_search_requests`, `search_cost_usd` at `AI_PRICE_WEB_SEARCH`, default $0.01 each).
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                service: { type: string, description: 'Optional: a service name from the rate card' }
+                area: { type: string, description: 'Optional: an area from the rate card' }
+          application/x-www-form-urlencoded:
+            schema: { type: object }
+      responses:
+        '200':
+          description: JSON clients. HTML clients get a 303 to `/owner/clients?tab=find&n=found|cached|no_matches`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [leads, cached, searches, dropped]
+                properties:
+                  cached: { type: boolean }
+                  searches: { type: integer, description: 'Web searches this run used (0 when cached)' }
+                  dropped: { type: object, additionalProperties: { type: integer }, description: 'Reason to count: source_not_in_results, social_media, personal_contact, individual, duplicate, invalid' }
+                  leads:
+                    type: array
+                    maxItems: 8
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        organisation: { type: string }
+                        type: { type: string }
+                        whyAFit: { type: string }
+                        sourceUrl: { type: string }
+                        sourceDomain: { type: string }
+                        publicContact: { type: [string, 'null'] }
+                        status: { type: string, enum: [new, drafted, sent, replied, not_interested] }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '409':
+          description: 'Error code is one of: discovery_limit, ai_off, ai_cap, no_city, bad_focus, discovery_failed'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /owner/clients/leads/{id}/status:
+    post:
+      tags: [owner]
+      summary: Update a lead in the pipeline (M10b)
+      description: '`replied` marks the lead Replied. `not_interested` marks it Not interested, sets do-not-contact and discards any unsent draft. Drafting and sending move a lead New to Drafted to Sent.'
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [replied, not_interested] }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /owner/clients/draft:
     post:

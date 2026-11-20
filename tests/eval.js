@@ -9,6 +9,7 @@ import { seed } from '../src/seed.js';
 import { createClaudeClient } from '../src/ai/claudeClient.js';
 import { startEnquiry, replyToEnquiry, presentResult } from '../src/services/enquiries/enquiryService.js';
 import { factsFor, generateDraft, MAX_WORDS } from '../src/services/clients/draft.js';
+import { discoverClients, sourcesOf, normUrl, isSocial, looksPersonal, isOwnPage } from '../src/services/clients/discovery.js';
 
 const casesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'cases');
 const FIXED_NOW = new Date('2026-11-20T10:00:00Z'); // so "12 Dec" always means 2026
@@ -119,7 +120,7 @@ const EVENT_WORDS = ['wedding', 'birthday', 'anniversary', 'housewarming', 'enga
 async function runDraftCase(c) {
   const repos = createRepos();
   seed(repos);
-  const ai = createClaudeClient({ apiKey: config.anthropicApiKey, models: { intake: config.ai.modelIntake, outreach: config.ai.modelOutreach } });
+  const ai = createClaudeClient({ apiKey: config.anthropicApiKey, models: { intake: config.ai.modelIntake, outreach: config.ai.modelOutreach, discovery: config.ai.modelDiscovery } });
   const facts = factsFor(c.subject, repos.businessSettings.get());
   const result = await generateDraft({ repos, ai, config, now: () => FIXED_NOW }, facts);
   const text = result.text;
@@ -146,6 +147,35 @@ async function runDraftCase(c) {
     id: c.id, name: c.name, fails, text, words, attempts: result.attempts, used: rows.length,
     tokens: { input: sum('inputTokens'), output: sum('outputTokens'), cacheRead: sum('cacheReadTokens'), cacheWrite: sum('cacheWriteTokens') },
     cost: sum('costUsd'),
+  };
+}
+
+// ---- Find clients with web search (F01): every lead has a real source, no individuals, 3 to 8 results ---
+async function runDiscoveryCase(c) {
+  const repos = createRepos();
+  seed(repos);
+  const live = createClaudeClient({ apiKey: config.anthropicApiKey, models: { intake: config.ai.modelIntake, outreach: config.ai.modelOutreach, discovery: config.ai.modelDiscovery } });
+  const responses = [];
+  const ai = { createMessage: async (req) => { const r = await live.createMessage(req); responses.push(r); return r; } }; // keeps the raw responses to check the sources independently
+  const result = await discoverClients({ repos, ai, config, now: () => FIXED_NOW }, c.focus);
+  const sources = new Set(responses.flatMap((r) => [...sourcesOf(r.content)]));
+  const fails = [];
+  const n = result.leads.length;
+  if (n < c.expect.min || n > c.expect.max) fails.push(`${n} leads kept (expected ${c.expect.min} to ${c.expect.max}); dropped: ${JSON.stringify(result.dropped)}`);
+  for (const l of result.leads) {
+    const label = `"${l.name}"`;
+    if (!/^https?:\/\//.test(l.sourceUrl) || !sources.has(normUrl(l.sourceUrl))) fails.push(`${label}: source is not in the search results or citations`);
+    if (isSocial(l.sourceDomain)) fails.push(`${label}: social media source`);
+    if (/^(mr|mrs|ms|miss|dr|shri|smt|sri)\.?\s/i.test(l.name) || /\b(individual|freelanc\w*|private person|influencer|personal)\b/i.test(l.orgType)) fails.push(`${label}: looks like a private individual`);
+    if (l.publicContact && looksPersonal(l.publicContact) && !isOwnPage(l.sourceDomain, l.name)) fails.push(`${label}: personal-looking contact`);
+    if (NO_PRICES.test(`${l.whyFit} ${l.orgType}`)) fails.push(`${label}: mentions a price`);
+  }
+  const rows = repos.aiCalls.all().filter((r) => r.purpose === 'discovery');
+  const sum = (k) => rows.reduce((x, r) => x + r[k], 0);
+  return {
+    id: c.id, name: c.name, fails, leads: result.leads, dropped: result.dropped, searches: sum('webSearchRequests'), used: rows.length,
+    tokens: { input: sum('inputTokens'), output: sum('outputTokens'), cacheRead: sum('cacheReadTokens'), cacheWrite: sum('cacheWriteTokens') },
+    cost: sum('costUsd') + sum('searchCostUsd'), searchCost: sum('searchCostUsd'),
   };
 }
 
@@ -184,10 +214,25 @@ for (const f of fs.readdirSync(casesDir).filter((x) => /^D\d+\.json$/.test(x)).s
   if (r.text) console.log(`        > ${r.text.replace(/\n+/g, ' ')}`);
 }
 
+const discovery = [];
+for (const f of fs.readdirSync(casesDir).filter((x) => /^F\d+\.json$/.test(x)).sort()) {
+  const c = JSON.parse(fs.readFileSync(path.join(casesDir, f), 'utf8'));
+  let r;
+  try {
+    r = await runDiscoveryCase(c);
+  } catch (err) {
+    r = { id: c.id, name: c.name, fails: [`crashed: ${err?.code ?? err?.status ?? err?.name}`], leads: [], dropped: {}, searches: 0, used: 0, tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, cost: 0, searchCost: 0 };
+  }
+  discovery.push(r);
+  console.log(`${r.fails.length ? 'FAIL' : 'PASS'}  ${r.id} ${r.name}  [${r.leads.length} leads kept, dropped ${JSON.stringify(r.dropped)}, ${r.searches} searches, ${r.used} request${r.used === 1 ? '' : 's'}]`);
+  for (const x of r.fails) console.log(`        - ${x}`);
+  for (const l of r.leads) console.log(`        > ${l.name} (${l.orgType}) ${l.sourceDomain}${l.publicContact ? ` ${l.publicContact}` : ''}`);
+}
+
 const core = results.filter((r) => Number(r.id.slice(1)) <= 10);
 const passed = core.filter((r) => !r.fails.length).length;
 const must = ['E08', 'E10'].every((id) => results.find((r) => r.id === id)?.fails.length === 0);
-const all = [...results, ...drafts];
+const all = [...results, ...drafts, ...discovery];
 const tot = (k) => all.reduce((n, r) => n + r.tokens[k], 0);
 const cost = all.reduce((n, r) => n + r.cost, 0);
 const priced = Object.values(config.ai.prices).some((p) => p > 0);
@@ -195,8 +240,9 @@ const priced = Object.values(config.ai.prices).some((p) => p > 0);
 console.log('\n--- Summary ---');
 console.log(`E01-E10: ${passed}/10 passed (bar: 9, with E08 and E10)  E08+E10: ${must ? 'pass' : 'FAIL'}`);
 for (const r of results.filter((x) => Number(x.id.slice(1)) > 10)) console.log(`${r.id}: ${r.fails.length ? 'FAIL' : 'pass'}`);
+for (const r of discovery) console.log(`${r.id}: ${r.fails.length ? 'FAIL' : 'pass'} (${r.leads.length} leads, ${r.searches} web searches = $${r.searchCost.toFixed(2)})`);
 console.log(`Drafts D01-D03: ${drafts.filter((r) => !r.fails.length).length}/${drafts.length} passed`);
 console.log(`Requests: ${all.reduce((n, r) => n + r.used, 0)} (max per case ${Math.max(...all.map((r) => r.used))})`);
 console.log(`Tokens: input ${tot('input')}, output ${tot('output')}, cache read ${tot('cacheRead')}, cache write ${tot('cacheWrite')}`);
 console.log(priced ? `Cost: $${cost.toFixed(4)} (model ${config.ai.modelIntake})` : 'Cost: not computed (set the AI_PRICE_* variables in .env)');
-process.exit(passed >= 9 && must && drafts.every((r) => !r.fails.length) ? 0 : 1);
+process.exit(passed >= 9 && must && drafts.every((r) => !r.fails.length) && discovery.every((r) => !r.fails.length) ? 0 : 1);

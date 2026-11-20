@@ -1,0 +1,2 @@
+{ "id": "F01", "name": "find clients with web search (live)", "kind": "discovery",
+  "focus": { "service": null, "area": "Whitefield" }, "expect": { "min": 3, "max": 8 } }
