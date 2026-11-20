@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= biz.businessName %> · Enquiry</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <main>
+    <header class="top"><p class="brand"><%= biz.businessName %></p></header>
+    <% if (biz.tagline) { %><p class="slate"><%= biz.tagline %></p><% } %>
+
+    <div id="enquire-root" aria-live="polite">
+      <% if (notice) { %><p class="notice notice-error" role="alert"><%= notice %></p><% } %>
+
+      <% if (view === 'start') { %>
+        <h1 tabindex="-1" data-focus>Tell us what you need</h1>
+        <form method="post" action="/api/enquiries" data-enhance novalidate>
+          <div class="field">
+            <label for="description">What do you need?</label>
+            <textarea id="description" name="description" rows="5" maxlength="1000" data-count="count" placeholder="e.g. Veg lunch for 40 people on 13 Dec, in Koramangala"<% if (errors.description) { %> aria-invalid="true" aria-describedby="error-description"<% } %>><%= values.description || '' %></textarea>
+            <p class="slate small"><span id="count">0</span>/1,000</p>
+            <% if (errors.description) { %><p class="field-error" id="error-description"><%= errors.description %></p><% } %>
+          </div>
+          <div class="field">
+            <label for="name">Your name</label>
+            <input id="name" name="name" type="text" autocomplete="name" maxlength="120" value="<%= values.name || '' %>"<% if (errors.name) { %> aria-invalid="true" aria-describedby="error-name"<% } %>>
+            <% if (errors.name) { %><p class="field-error" id="error-name"><%= errors.name %></p><% } %>
+          </div>
+          <fieldset class="field">
+            <legend>Reply to me on</legend>
+            <label class="choice"><input type="radio" name="channel" value="whatsapp"<%= (values.channel || 'whatsapp') === 'whatsapp' ? ' checked' : '' %>> WhatsApp</label>
+            <label class="choice"><input type="radio" name="channel" value="email"<%= values.channel === 'email' ? ' checked' : '' %>> Email</label>
+            <% if (errors.channel) { %><p class="field-error"><%= errors.channel %></p><% } %>
+          </fieldset>
+          <div class="field" data-for="whatsapp">
+            <label for="phone">WhatsApp number</label>
+            <input id="phone" name="phone" type="tel" autocomplete="tel" maxlength="30" value="<%= values.phone || '' %>"<% if (errors.phone) { %> aria-invalid="true" aria-describedby="error-phone"<% } %>>
+            <% if (errors.phone) { %><p class="field-error" id="error-phone"><%= errors.phone %></p><% } %>
+          </div>
+          <div class="field" data-for="email">
+            <label for="email">Email address</label>
+            <input id="email" name="email" type="email" autocomplete="email" maxlength="200" value="<%= values.email || '' %>"<% if (errors.email) { %> aria-invalid="true" aria-describedby="error-email"<% } %>>
+            <% if (errors.email) { %><p class="field-error" id="error-email"><%= errors.email %></p><% } %>
+          </div>
+          <div class="hp" aria-hidden="true">
+            <label for="website">Leave this field empty</label>
+            <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+          </div>
+          <button type="submit" class="btn">Send enquiry</button>
+          <p class="slate small wait" hidden>Checking your details…</p>
+          <p class="slate small">We'll only use your details to reply about this enquiry.</p>
+        </form>
+
+      <% } else if (view === 'ask') { %>
+        <h1 tabindex="-1" data-focus>One more thing</h1>
+        <p class="slate small">You wrote</p>
+        <blockquote class="wrote"><%= rawText %></blockquote>
+        <p class="ask"><%= question %></p>
+        <form method="post" action="/api/enquiries/<%= publicId %>/reply" data-enhance novalidate>
+          <div class="field">
+            <label for="answer">Your answer</label>
+            <textarea id="answer" name="answer" rows="3" maxlength="1000"<% if (errors.answer) { %> aria-invalid="true" aria-describedby="error-answer"<% } %>><%= values.answer || '' %></textarea>
+            <% if (errors.answer) { %><p class="field-error" id="error-answer"><%= errors.answer %></p><% } %>
+          </div>
+          <button type="submit" class="btn">Send answer</button>
+          <p class="slate small wait" hidden>Checking your details…</p>
+        </form>
+
+      <% } else if (view === 'done') { %>
+        <h1 tabindex="-1" data-focus>Thanks<%= firstName ? ', ' + firstName : '' %>. Your enquiry is with <%= biz.businessName %>.</h1>
+        <% if (understood) { %>
+          <h2 class="small-h">What we understood</h2>
+          <p><%= [understood.serviceName, understood.quantity ? understood.quantity + ' guests' : '', understood.eventDate, understood.location].filter(Boolean).concat(understood.addonNames || []).join(' · ') %></p>
+        <% } %>
+        <p>You'll get your quote <%= replyChannel === 'whatsapp' ? 'on WhatsApp' : 'by email' %> once the owner approves it.</p>
+
+      <% } else if (view === 'scope') { %>
+        <h1 tabindex="-1" data-focus>Thanks for asking</h1>
+        <p><%= message %></p>
+
+      <% } else if (view === 'fallback') { %>
+        <% const pre = prefill || {}; const preAddons = [].concat(pre.addon_ids || []); const known = areas.includes(pre.location); %>
+        <h1 tabindex="-1" data-focus>Tell us a few details</h1>
+        <form method="post" action="/api/enquiries/<%= publicId %>/form" data-enhance novalidate>
+          <div class="field">
+            <label for="service_id">Service</label>
+            <select id="service_id" name="service_id"<% if (errors.service_id) { %> aria-invalid="true" aria-describedby="error-service_id"<% } %>>
+              <option value="">Choose a service</option>
+              <% services.forEach(function (s) { %><option value="<%= s.id %>"<%= pre.service_id === s.id ? ' selected' : '' %>><%= s.name %></option><% }) %>
+            </select>
+            <% if (errors.service_id) { %><p class="field-error" id="error-service_id"><%= errors.service_id %></p><% } %>
+          </div>
+          <div class="field">
+            <label for="quantity">Guests (hours for live counters)</label>
+            <input id="quantity" name="quantity" type="number" min="1" max="10000" value="<%= pre.quantity || '' %>"<% if (errors.quantity) { %> aria-invalid="true" aria-describedby="error-quantity"<% } %>>
+            <% if (errors.quantity) { %><p class="field-error" id="error-quantity"><%= errors.quantity %></p><% } %>
+          </div>
+          <div class="field">
+            <label for="event_date">Date</label>
+            <input id="event_date" name="event_date" type="date" value="<%= pre.event_date || '' %>"<% if (errors.event_date) { %> aria-invalid="true" aria-describedby="error-event_date"<% } %>>
+            <% if (errors.event_date) { %><p class="field-error" id="error-event_date"><%= errors.event_date %></p><% } %>
+          </div>
+          <div class="field">
+            <label for="location">Area</label>
+            <select id="location" name="location">
+              <option value="">Choose an area</option>
+              <% areas.forEach(function (a) { %><option value="<%= a %>"<%= pre.location === a ? ' selected' : '' %>><%= a %></option><% }) %>
+              <option value="Other"<%= pre.location && !known ? ' selected' : '' %>>Other</option>
+            </select>
+            <label for="location_other" class="small">If other, which area?</label>
+            <input id="location_other" name="location_other" type="text" maxlength="120" value="<%= pre.location && !known ? pre.location : '' %>">
+          </div>
+          <fieldset class="field">
+            <legend>Add-ons</legend>
+            <% addons.forEach(function (a) { %><label class="choice"><input type="checkbox" name="addon_ids" value="<%= a.id %>"<%= preAddons.includes(a.id) ? ' checked' : '' %>> <%= a.name %></label><% }) %>
+          </fieldset>
+          <div class="field">
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes" rows="3" maxlength="1000"><%= pre.notes || '' %></textarea>
+          </div>
+          <% if (errors._form) { %><p class="field-error"><%= errors._form %></p><% } %>
+          <button type="submit" class="btn">Send details</button>
+          <p class="slate small wait" hidden>Checking your details…</p>
+        </form>
+      <% } %>
+    </div>
+
+    <footer class="slate small foot">Powered by Liaisa</footer>
+  </main>
+  <script src="/js/enquire.js" defer></script>
+</body>
+</html>

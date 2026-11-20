@@ -16,3 +16,19 @@ export function contactLimiter() {
     },
   });
 }
+
+const ENQUIRY_LIMIT_TEXT = "You've sent a few enquiries in a row. Try again in an hour, or use the contact form.";
+
+/** Enquiry start (3/hour) and reply (10/hour) per IP (openapi "Rate limits"). `html` renders the no-JS/swap response. */
+export function enquiryLimiter({ limit, html }) {
+  return rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler: (req, res) => {
+      if (wantsJson(req)) return res.status(429).json(errorBody('rate_limited', ENQUIRY_LIMIT_TEXT));
+      return html(req, res, ENQUIRY_LIMIT_TEXT);
+    },
+  });
+}

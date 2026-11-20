@@ -7,6 +7,8 @@ import {
   createFollowupStore, createEmailStore, createWhatsappShareStore,
   createCustomerResponseStore, createAiCallStore,
 } from './db/repos/simple.js';
+import { createMockClient } from './ai/mockClient.js';
+import { createClaudeClient } from './ai/claudeClient.js';
 import { createSmtpMailer } from './mail/smtpTransport.js';
 import { seed } from './seed.js';
 
@@ -32,6 +34,9 @@ export function buildDeps(config) {
   return {
     contacts: createContactMessageStore(),
     repos,
+    ai: config.aiMode === 'live'
+      ? createClaudeClient({ apiKey: config.anthropicApiKey, models: { intake: config.ai.modelIntake } })
+      : createMockClient(),
     mailer: config.mailEnabled ? createSmtpMailer(config.smtp) : null,
   };
 }

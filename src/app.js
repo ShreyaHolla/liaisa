@@ -4,13 +4,14 @@ import express from 'express';
 import helmet from 'helmet';
 import { publicRoutes } from './routes/public.js';
 import { contactRoutes } from './routes/contact.js';
+import { enquiryRoutes } from './routes/enquiries.js';
 import { ownerRoutes, ownerDisabled } from './routes/owner.js';
 import { errorHandler } from './middleware/errors.js';
 import { buildDeps } from './container.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-/** `deps` ({ contacts, repos, mailer }) lets tests inject a fake mailer; default wires by env. */
+/** `deps` ({ contacts, repos, mailer, ai }) lets tests inject a fake mailer; default wires by env. */
 export function createApp(config, deps = buildDeps(config)) {
   const app = express();
   app.set('trust proxy', 1);
@@ -23,6 +24,7 @@ export function createApp(config, deps = buildDeps(config)) {
   app.use('/js', express.static(path.join(here, 'public', 'js')));
   app.use(publicRoutes(config));
   app.use(contactRoutes({ store: deps.contacts, mailer: deps.mailer, config }));
+  app.use(enquiryRoutes({ repos: deps.repos, ai: deps.ai, config }));
   app.use('/owner', config.ownerEnabled ? ownerRoutes({ config, repos: deps.repos }) : ownerDisabled);
 
   app.use((req, res) => {

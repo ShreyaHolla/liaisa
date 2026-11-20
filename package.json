@@ -18,6 +18,7 @@
     "package": "node scripts/package.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.11.0",
     "bcryptjs": "^3.0.3",
     "ejs": "^7.0.2",
     "express": "^4.22.3",

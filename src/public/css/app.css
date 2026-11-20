@@ -43,3 +43,19 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--
 .notice-ok { color: var(--jade); }
 .notice-error { color: var(--rose); }
 .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+
+/* Enquiry page (DESIGN §4.2) */
+a.btn { display: inline-block; text-decoration: none; }
+select { width: 100%; box-sizing: border-box; padding: var(--s-3); font: inherit; background: var(--white); border: 1px solid var(--line); border-radius: var(--r-sm); color: var(--ink); }
+select:focus-visible { outline: 3px solid var(--plum); outline-offset: 2px; }
+fieldset { border: 0; padding: 0; margin: 0 0 var(--s-4); }
+legend { font-size: var(--t-sm); color: var(--slate); padding: 0; margin-bottom: var(--s-2); }
+.choice { display: inline-block; margin-right: var(--s-5); color: var(--ink); font-size: var(--t-base); }
+.choice input { width: auto; margin-right: var(--s-2); }
+.slate { color: var(--slate); }
+.small { font-size: var(--t-sm); }
+.small-h { color: var(--plum); font-size: var(--t-md); }
+.wrote { margin: 0 0 var(--s-4); color: var(--slate); font-style: italic; }
+.ask { border-left: 3px solid var(--plum); padding-left: var(--s-3); font-size: var(--t-md); }
+.foot { margin-top: var(--s-6); }
+[hidden] { display: none !important; }
