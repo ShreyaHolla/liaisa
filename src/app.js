@@ -68,6 +68,9 @@ export function createApp(config, deps = buildDeps(config)) {
   const staticOptions = { cacheControl: false, index: false, setHeaders: (res) => res.set('Cache-Control', cacheControlFor(res.req)) };
   app.use('/js', express.static(path.join(here, 'public', 'js'), staticOptions));
   app.use('/fonts', express.static(path.join(here, 'public', 'fonts'), staticOptions));
+  app.use('/img', express.static(path.join(here, 'public', 'img'), staticOptions));
+  // Some browsers ask for /favicon.ico whatever the page says: send them to the versioned SVG.
+  app.get('/favicon.ico', (req, res) => res.redirect(302, assets.asset('/img/favicon.svg')));
   app.use(publicRoutes(config));
   app.use(contactRoutes({ store: deps.contacts, mailer: deps.mailer, config }));
   // Customer pages for one business: /b/:slug/enquire, /b/:slug/api/enquiries, /b/:slug/q/:token.

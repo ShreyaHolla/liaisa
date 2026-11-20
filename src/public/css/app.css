@@ -379,3 +379,16 @@ details.edit summary { cursor: pointer; color: var(--plum); font-weight: 600; mi
 @media (prefers-reduced-motion: reduce) { [data-toggle-anim], .js [data-toggle-anim] { display: none; } .demo-tap { display: none; } }
 .safe { grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
 .steps li { align-content: start; }
+
+/* Logo and mark (M15) */
+.brand--logo { display: inline-flex; align-items: center; min-height: 44px; }
+.brand--logo img { display: block; height: 32px; width: auto; }
+.brand--mark { display: inline-flex; align-items: center; gap: var(--s-2); }
+.brand--mark img { display: block; width: 28px; height: 28px; }
+.sidebar .brand--mark { padding: 0 var(--s-3); }
+.sidebar .biz-name { margin: 0 0 var(--s-4); padding: 0 var(--s-3); color: var(--slate); font-size: var(--t-sm); }
+.owner-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-2) var(--page-pad); background: var(--white); border-bottom: 1px solid var(--line); min-height: 52px; }
+.owner-bar__biz { color: var(--slate); font-size: var(--t-sm); text-align: right; }
+@media (min-width: 64rem) { .owner-bar { display: none; } }
+.powered { display: flex; align-items: center; justify-content: center; gap: var(--s-2); margin-top: var(--s-6); color: var(--slate); font-size: var(--t-sm); }
+.powered img { display: block; width: 20px; height: 20px; }

@@ -1,6 +1,10 @@
 <header class="site-bar">
   <div class="site-bar__inner">
-    <a class="brand" href="<%= typeof brandHref !== 'undefined' ? brandHref : '/' %>"><%= brand %></a>
+    <% if (typeof logo !== 'undefined' && logo) { %>
+      <a class="brand brand--logo" href="/"><img src="<%= asset('/img/liaisa-logo.svg') %>" alt="Liaisa" width="85" height="32"></a>
+    <% } else { %>
+      <a class="brand" href="<%= typeof brandHref !== 'undefined' ? brandHref : '/' %>"><%= brand %></a>
+    <% } %>
     <% if (typeof links !== 'undefined' && links) { %>
       <nav aria-label="Main">
         <a href="/#how">How it works</a>

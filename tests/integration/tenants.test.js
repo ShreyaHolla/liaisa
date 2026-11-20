@@ -223,7 +223,7 @@ test('the default cap is 50 businesses', () => {
 test('login: the page shows the Liaisa wordmark and no business name', async () => {
   const ctx = setupOwner();
   const page = await request(ctx.app).get('/owner/login');
-  assert.match(page.text, /<a class="brand" href="\/">Liaisa<\/a>/);
+  assert.match(page.text, /<a class="brand brand--logo" href="\/"><img src="\/img\/liaisa-logo\.svg\?v=[0-9a-f]{10}" alt="Liaisa" width="85" height="32"><\/a>/);
   assert.ok(!page.text.includes('Mehfil Kitchen'));
   assert.match(page.text, /name="email"/);
 });

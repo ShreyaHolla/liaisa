@@ -6,7 +6,8 @@
 <a class="sr" href="#main">Skip to content</a>
 <div class="shell">
   <aside class="sidebar" aria-label="Owner">
-    <a class="brand" href="/owner"><%= businessName %></a>
+    <a class="brand brand--mark" href="/owner"><img src="<%= asset('/img/liaisa-mark.svg') %>" alt="" width="28" height="28"><span>Liaisa</span></a>
+    <p class="biz-name"><%= businessName %></p>
     <nav aria-label="Owner">
       <% nav.forEach(function (n) { %>
         <a href="<%= n.href %>"<%- active === n.key ? ' aria-current="page"' : '' %>>
@@ -21,4 +22,8 @@
     </form>
   </aside>
   <main class="shell__main" id="main">
+    <header class="owner-bar">
+      <a class="brand brand--mark" href="/owner"><img src="<%= asset('/img/liaisa-mark.svg') %>" alt="" width="28" height="28"><span>Liaisa</span></a>
+      <span class="owner-bar__biz"><%= businessName %></span>
+    </header>
     <div class="container">

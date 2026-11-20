@@ -193,7 +193,10 @@ test('landing: a phone plays one quote from message to "Quote sent", built from 
   assert.match(demo, /<figcaption id="demo-cap"/);
   assert.match(demo, /data-toggle-anim="hero-demo" aria-pressed="false">Pause animation<\/button>/);
   assert.match(demo, /<p class="sr">What happens: [^<]*Liaisa, an AI assistant, asks which area[^<]*₹31,185 calculated by the server[^<]*The quote is sent\./, 'a text alternative for the animation');
-  assert.ok(!/<img|<picture|<video|<canvas|background-image/.test(page.text + css), 'no images: original markup and CSS only');
+  assert.ok(!/<img|<picture|<video|<canvas/.test(demo) && !/background-image/.test(css), 'the demo is original markup and CSS: no images');
+  const imgs = [...page.text.matchAll(/<img[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(imgs.length >= 1 && imgs.every((u) => /^\/img\/liaisa-[a-z-]+\.svg\?v=[0-9a-f]{10}$/.test(u)), `only our own logo files: ${imgs}`);
+  assert.ok(!/<picture|<video|<canvas/.test(page.text));
   assert.ok(!/https?:\/\/(?!www\.w3\.org)/.test(demo), 'no external references');
   assert.match(page.text, /<a class="btn lg" href="\/b\/mehfil-kitchen\/enquire">Try the demo enquiry<\/a>/);
   assert.match(page.text, /<a class="btn secondary lg" href="\/signup">Sign up your business<\/a>/);
