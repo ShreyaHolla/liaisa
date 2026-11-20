@@ -349,6 +349,39 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
+  /owner/enquiries/{id}/reprice:
+    post:
+      tags: [owner]
+      summary: Reprice an open draft with the current prices
+      description: |
+        Only for a quote that is still an open draft (enquiry `awaiting_approval` or `needs_owner`, estimate `draft`).
+        The server recomputes it with the latest published pricing config, keeps the requirements, the owner's
+        discount and the note, saves a new draft version linked to that config (the previous draft becomes
+        `superseded`, revision reason "Repriced with current prices") and logs it in Activity. Sent, approved,
+        accepted, declined and lost quotes are never repriced (409). A draft already on the current config returns 409
+        with code `already_current`. If the engine rejects the new numbers (service removed, discount now larger
+        than the quote) nothing changes (400). HTML clients get a 303 back with a before/after notice.
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/EnquiryId'
+      responses:
+        '200':
+          description: The new draft, plus the totals before and after (whole rupees)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Estimate'
+                  - type: object
+                    properties:
+                      before: { type: integer }
+                      after: { type: integer }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
   /owner/enquiries/{id}/decline:
     post:
       tags: [owner]

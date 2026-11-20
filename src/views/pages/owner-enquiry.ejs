@@ -64,6 +64,14 @@
     <% if (sentOnWhatsapp) { %><p class="slate small" role="status">Opened in WhatsApp. Tap Send there to deliver it.</p><% } %>
     <% if (quoteLink) { %><p class="slate small">Quote link: <a class="quote-link" href="<%= quoteLink %>"><%= quoteLink %></a></p><% } %>
 
+    <% if (can.reprice) { %>
+      <form method="post" action="/owner/enquiries/<%= enquiry.id %>/reprice" class="reprice">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn secondary" type="submit">Reprice with current prices</button>
+        <p class="slate small">Uses your latest prices from Business setup. Your discount and note are kept, and a new version is saved.</p>
+      </form>
+    <% } %>
+
     <% if (can.edit) { %>
       <details class="edit edit--bar" id="edit" <%= Object.keys(edit.errors).length ? 'open' : '' %>>
         <summary>Edit quote</summary>

@@ -3,7 +3,7 @@
 import { Router } from 'express';
 import { ConflictError, NotFoundError, ValidationError } from '../errors.js';
 import { errorBody } from '../middleware/errors.js';
-import { approveAndSend, editEstimate, declineEnquiry, retryQuoteEmail, shareOnWhatsapp } from '../services/quotes/approval.js';
+import { approveAndSend, editEstimate, declineEnquiry, retryQuoteEmail, shareOnWhatsapp, repriceEstimate } from '../services/quotes/approval.js';
 import { editSchema, approveSchema, flatErrors } from '../services/quotes/schema.js';
 import { dashboardSummary, enquiryDetail, whatOf } from '../services/owner/dashboard.js';
 import { sendReminder, markFollowupDone } from '../services/followups/reminders.js';
@@ -26,18 +26,11 @@ const NOTICES = {
   reminder_sent: ['ok', 'Reminder sent'],
   reminder_failed: ['problem', 'The reminder email didn’t send. Try again.'],
   followup_done: ['ok', 'Marked as done. This follow-up is hidden.'],
+  already_current: ['ok', 'This quote already uses your current prices.'],
+  reprice_failed: ['problem', 'The quote couldn’t be repriced with the current prices (for example a service was removed, or the discount is now more than the quote). It is unchanged.'],
   conflict: ['problem', 'That quote has changed or already moved on. Review it and try again.'],
   invalid: ['problem', 'Something in that request wasn’t right. Check it and try again.'],
 };
-const notice = (req) => {
-  if (req.query.n === 'bulk_done') {
-    const c = Number.parseInt(req.query.c, 10);
-    const n = Number.isInteger(c) && c >= 0 && c <= 999 ? c : 0;
-    return ['ok', n === 0 ? 'No clean quotes were left to approve.' : `${n} quote${n === 1 ? '' : 's'} approved.`];
-  }
-  return typeof req.query.n === 'string' && Object.hasOwn(NOTICES, req.query.n) ? NOTICES[req.query.n] : null;
-};
-
 const capital = (s) => `${s.charAt(0).toUpperCase()}${s.slice(1)}.`;
 
 function presentEstimate(e) {
@@ -53,6 +46,20 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
   const deps = () => ({ repos, config, mailer });
   const businessName = () => repos.businessSettings.get()?.businessName ?? 'Liaisa';
   const money = (n) => inr(n, repos.businessSettings.get()?.currencySymbol ?? '₹'); // symbol is display only
+
+  const notice = (req) => {
+    if (req.query.n === 'repriced') {
+      const [b, a] = [Number.parseInt(req.query.b, 10), Number.parseInt(req.query.a, 10)];
+      const ok = [b, a].every((v) => Number.isInteger(v) && v >= 0 && v <= 1e9);
+      return ['ok', ok ? `Repriced with current prices: ${money(b)} to ${money(a)}.` : 'Repriced with current prices.'];
+    }
+    if (req.query.n === 'bulk_done') {
+      const c = Number.parseInt(req.query.c, 10);
+      const n = Number.isInteger(c) && c >= 0 && c <= 999 ? c : 0;
+      return ['ok', n === 0 ? 'No clean quotes were left to approve.' : `${n} quote${n === 1 ? '' : 's'} approved.`];
+    }
+    return typeof req.query.n === 'string' && Object.hasOwn(NOTICES, req.query.n) ? NOTICES[req.query.n] : null;
+  };
 
   const notFound = (req, res) => (wantsJson(req)
     ? res.status(404).json(errorBody('not_found', 'We couldn’t find that enquiry.'))
@@ -70,9 +77,9 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
       .find(([C]) => err instanceof C);
     if (!hit) return next(err);
     const [, status, code, key] = hit;
-    if (wantsJson(req)) return res.status(status).json(errorBody(code, err.message, err.details));
+    if (wantsJson(req)) return res.status(status).json(errorBody(err.code ?? code, err.message, err.details));
     if (status === 404) return notFound(req, res);
-    return res.redirect(303, `${back}?n=${key}`);
+    return res.redirect(303, `${back}?n=${err.code && Object.hasOwn(NOTICES, err.code) ? err.code : key}`);
   }
   const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
   const detailUrl = (req) => `/owner/enquiries/${req.enquiryId}`;
@@ -191,6 +198,20 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
       return fail(req, res, err, next, detailUrl(req));
     }
   }));
+
+  // ---- Reprice with current prices (open drafts only) ----------------------------------------
+  router.post('/enquiries/:id/reprice', (req, res, next) => {
+    try {
+      const { estimate, before, after } = repriceEstimate(deps(), req.enquiryId);
+      if (wantsJson(req)) return res.json({ ...presentEstimate(estimate), before, after });
+      return res.redirect(303, `${detailUrl(req)}?n=repriced&b=${before}&a=${after}`);
+    } catch (err) {
+      if (err instanceof ValidationError) {
+        return wantsJson(req) ? fail(req, res, err, next, detailUrl(req)) : res.redirect(303, `${detailUrl(req)}?n=reprice_failed`);
+      }
+      return fail(req, res, err, next, detailUrl(req));
+    }
+  });
 
   // ---- Decline ---------------------------------------------------------------------------
   router.post('/enquiries/:id/decline', (req, res, next) => {

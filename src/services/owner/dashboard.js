@@ -164,6 +164,7 @@ export function enquiryDetail(deps, id, now = new Date()) {
     can: {
       approve: open && status === 'draft',
       edit: open && status === 'draft',
+      reprice: open && status === 'draft',
       decline: ['collecting', 'awaiting_approval', 'needs_owner'].includes(enquiry.status),
       retry: Boolean(mailer) && enquiry.preferredChannel === 'email' && ['approved', 'approved_send_failed'].includes(status),
       whatsapp: approved && Boolean(enquiry.customerPhone),

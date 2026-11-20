@@ -257,6 +257,8 @@ dialog.sheet-dialog { margin: auto auto 0; width: 100%; max-width: none; border-
 .draft { margin: 0 0 var(--s-3); padding: var(--s-3) var(--s-4); border-left: 3px solid var(--plum); background: var(--cloud); border-radius: 0 var(--r-sm) var(--r-sm) 0; white-space: pre-wrap; }
 .quote-link { word-break: break-all; font-size: var(--t-sm); }
 details.edit { margin-top: var(--s-4); }
+.reprice { margin-top: var(--s-4); }
+.reprice p { margin: var(--s-2) 0 0; }
 /* With JavaScript the action bar opens these, so the summary only shows once opened */
 .js details.edit--bar:not([open]) { display: none; }
 details.edit summary { cursor: pointer; color: var(--plum); font-weight: 600; min-height: 44px; display: flex; align-items: center; }

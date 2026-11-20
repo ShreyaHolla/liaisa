@@ -6,7 +6,7 @@ import { createEstimate } from '../estimates/createEstimate.js';
 import { missingFields, normaliseRequirements } from '../agent/areas.js';
 import { cancelFollowups } from '../followups/cancel.js';
 import { buildWaLink } from '../whatsapp/link.js';
-import { dateAfter } from '../../util/format.js';
+import { dateAfter, inr } from '../../util/format.js';
 import { quoteUrl, quoteEmail, whatsappText } from './messages.js';
 import { sendLogged } from './mail.js';
 
@@ -151,6 +151,39 @@ export function editEstimate(deps, enquiryId, input) {
     requirementsJson: requirements, missingFieldsJson: missingFields(pricing, requirements), status: 'awaiting_approval',
   });
   return created;
+}
+
+export const REPRICE_REASON = 'Repriced with current prices';
+
+/**
+ * Reprice an open draft with the latest published pricing config: a new draft version, linked to that config,
+ * keeping the requirements, the owner's discount and the note. Sent, approved, accepted and declined quotes are
+ * never repriced. Throws before changing anything when the engine rejects the new numbers (ValidationError).
+ * Returns { estimate, before, after } (whole rupees).
+ */
+export function repriceEstimate(deps, enquiryId) {
+  const { repos } = deps;
+  const enquiry = mustGetEnquiry(repos, enquiryId);
+  const previous = currentEstimate(repos, enquiryId);
+  if (!['awaiting_approval', 'needs_owner'].includes(enquiry.status) || previous?.status !== 'draft') {
+    throw new ConflictError('Only a quote that hasn’t been sent yet can be repriced.');
+  }
+  const latest = repos.pricingConfigs.latestApproved();
+  if (previous.pricingConfigId === latest.id) {
+    throw Object.assign(new ConflictError('This quote already uses your current prices.'), { code: 'already_current' });
+  }
+  const line = previous.lineItemsJson.find((l) => l.kind === 'discount');
+  const now = clock(deps);
+  const created = createEstimate(repos, enquiryId, {
+    requirements: normaliseRequirements(latest.configJson, enquiry.requirementsJson ?? {}),
+    pricingConfigId: latest.id,
+    discount: line ? { amount: -line.amount, reason: line.reason } : undefined,
+    note: previous.noteForCustomer, revisionReason: REPRICE_REASON, now,
+  });
+  repos.estimates.update(previous.id, { status: 'superseded' });
+  const symbol = repos.businessSettings.get()?.currencySymbol ?? '₹';
+  repos.activity.create({ enquiryId, text: `${REPRICE_REASON} (${inr(previous.total, symbol)} to ${inr(created.total, symbol)})` }, now);
+  return { estimate: created, before: previous.total, after: created.total };
 }
 
 /** Owner declines the enquiry: nothing is sent, reminders stop, any draft can no longer be approved. */
