@@ -15,6 +15,7 @@
         <button class="btn secondary" type="button" id="briefing-start">Read my approvals</button>
         <button class="btn secondary" type="button" id="briefing-pause" hidden>Pause</button>
         <button class="btn text" type="button" id="briefing-stop" hidden>Stop</button>
+        <span class="tag">Read aloud by your device from the fixed fields below. Not written by AI.</span>
       </div>
       <% if (summary.bulk.limit !== null && summary.bulk.clean.length) { %>
         <a class="btn" href="/owner/approve-clean">Approve all clean quotes (<%= summary.bulk.clean.length %>)</a>
@@ -39,7 +40,7 @@
                 <h3 class="approval__name"><%= n.customerName %></h3>
                 <p class="approval__meta"><%= [n.service, n.quantity ? n.quantity + ' ' + (n.unit || '') : '', n.eventDate ? formatDate(n.eventDate) : ''].filter(Boolean).join(' · ') %></p>
               </div>
-              <div class="approval__total"><%= n.total !== undefined ? inr(n.total) : '' %></div>
+              <div class="approval__total"><%= n.total !== undefined ? inr(n.total) : '' %><span class="calc-note">Calculated by the server</span></div>
             </div>
             <ul class="chips" aria-label="Checks">
               <% if (n.kind === 'review') { %><li class="chip tone-needs">Needs your review</li><% } %>

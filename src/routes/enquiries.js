@@ -31,7 +31,7 @@ export function enquiryRoutes({ repos, ai, config, mailer = null }) {
     return {
       fmtDate: formatDate, unitLabel, biz,
       example: examplePrompt(pricing), services: pricing.services, addons: pricing.addons, areas: Object.keys(pricing.travel.areas),
-      view: 'start', publicId: null, rawText: '', firstName: '', replyChannel: 'email',
+      view: 'start', aiSource: true, publicId: null, rawText: '', firstName: '', replyChannel: 'email',
       question: '', message: '', understood: null, prefill: {}, errors: {}, values: {}, notice: '',
       ...over,
     };
@@ -40,7 +40,7 @@ export function enquiryRoutes({ repos, ai, config, mailer = null }) {
   /** Render the page for an enquiry's current state (no price anywhere). */
   function render(res, status, enquiry, turn, extra = {}) {
     const common = {
-      publicId: enquiry.publicId, rawText: enquiry.rawText,
+      publicId: enquiry.publicId, rawText: enquiry.rawText, aiSource: enquiry.source !== 'form',
       firstName: enquiry.customerName.split(' ')[0], replyChannel: enquiry.preferredChannel,
     };
     const view = { needs_info: 'ask', fallback: 'fallback', out_of_scope: 'scope' }[turn.outcome] ?? 'done';

@@ -13,7 +13,7 @@
   <p class="banner tone-done" role="status"><%= draft.status === 'opened' ? 'Opened in WhatsApp. Tap Send there to deliver it.' : draft.status === 'sent' ? 'Sent.' : draft.status === 'sending' ? 'Sending…' : 'This draft was discarded.' %></p>
   <blockquote class="draft"><%= draft.message %></blockquote>
 <% } else { %>
-  <p class="slate small"><%= draft.source === 'ai' ? 'Written by Liaisa from the facts we hold. Check it before you send.' : 'This is the standard message. Edit it as you like.' %></p>
+  <p class="slate small"><% if (draft.source === 'ai') { %><%- include('../partials/ai-badge', { aiCaption: false }) %> Written by Liaisa from the facts we hold. Check it before you send.<% } else { %><span class="tag">Standard message</span> This is the standard message. Edit it as you like.<% } %></p>
   <% if (error) { %><p class="banner tone-problem" role="alert"><%= error %></p><% } %>
   <form method="post" action="/owner/clients/drafts/<%= draft.id %>/send" class="card">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
