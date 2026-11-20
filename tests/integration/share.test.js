@@ -45,7 +45,7 @@ test('the card shows on Approvals and at the top of Setup, with the link built f
     assert.match(page.text, /<h2 id="share-h">Share your enquiry link<\/h2>/, path);
     assert.match(page.text, new RegExp(`<input id="share-url" class="share__url" type="text" readonly value="${URL_OK.replace(/\//g, '\\/')}">`), path);
     assert.match(page.text, /<button class="btn" type="button" data-copy="share-url">Copy link<\/button>/);
-    assert.match(page.text, /<script src="\/js\/share\.js" defer><\/script>/);
+    assert.match(page.text, /<script src="\/js\/share\.js\?v=[0-9a-f]{10}" defer><\/script>/);
   }
   const setup = await ctx.o.get('/owner/setup');
   assert.ok(setup.text.indexOf('Share your enquiry link') < setup.text.indexOf('Your business'), 'it is at the top of Setup');

@@ -496,7 +496,7 @@ test('the Read my approvals button is on the page but hidden until the browser s
   assert.match(page.text, /<button class="btn secondary" type="button" id="briefing-start">Read my approvals<\/button>/);
   assert.match(page.text, /<button class="btn secondary" type="button" id="briefing-pause" hidden>Pause<\/button>/);
   assert.match(page.text, /<button class="btn text" type="button" id="briefing-stop" hidden>Stop<\/button>/);
-  assert.match(page.text, /<script src="\/js\/briefing\.js" defer><\/script>/);
+  assert.match(page.text, /<script src="\/js\/briefing\.js\?v=[0-9a-f]{10}" defer><\/script>/);
   assert.match(page.text, /data-warnings="\[&#34;Fewer guests|data-warnings="\[&quot;Fewer guests/);
   assert.equal((await request(ctx.app).get('/js/briefing.js')).status, 200);
   ctx.repos.enquiries.list().forEach((e) => ctx.repos.enquiries.update(e.id, { status: 'declined' }));

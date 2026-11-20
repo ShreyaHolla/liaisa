@@ -10,8 +10,8 @@
   </nav>
 </div>
 <%- include('confirm-dialog') %>
-<script src="/js/ui.js" defer></script>
-<script src="/js/owner.js" defer></script>
-<% (typeof scripts !== 'undefined' ? scripts : []).forEach(function (s) { %><script src="<%= s %>" defer></script><% }) %>
+<script src="<%= asset('/js/ui.js') %>" defer></script>
+<script src="<%= asset('/js/owner.js') %>" defer></script>
+<% (typeof scripts !== 'undefined' ? scripts : []).forEach(function (s) { %><script src="<%= asset(s) %>" defer></script><% }) %>
 </body>
 </html>

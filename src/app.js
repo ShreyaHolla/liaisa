@@ -10,6 +10,7 @@ import { oneTapRoutes } from './routes/oneTap.js';
 import { ownerRoutes, ownerDisabled } from './routes/owner.js';
 import { errorHandler } from './middleware/errors.js';
 import { buildDeps } from './container.js';
+import { buildAssets, cacheControlFor, REVALIDATE } from './assets.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -35,9 +36,27 @@ export function createApp(config, deps = buildDeps(config)) {
       directives: { ...helmet.contentSecurityPolicy.getDefaultDirectives(), 'form-action': ["'self'", 'https://wa.me', 'https://api.whatsapp.com', 'https://web.whatsapp.com'] },
     },
   }));
-  app.use('/css', express.static(path.join(here, 'public', 'css')));
-  app.use('/js', express.static(path.join(here, 'public', 'js')));
-  app.use('/fonts', express.static(path.join(here, 'public', 'fonts'), { maxAge: '30d', immutable: true }));
+
+  // Static assets carry a content hash (?v=...) in their URL, computed once at startup, so a new deploy is never
+  // masked by a stale cached copy. With ?v= they are cached for a year (immutable); without it they revalidate.
+  const assets = buildAssets(path.join(here, 'public'));
+  app.locals.asset = assets.asset;
+  // Everything else (HTML included) revalidates. Owner and quote pages set the stricter no-store themselves.
+  app.use((req, res, next) => {
+    res.set('Cache-Control', REVALIDATE);
+    next();
+  });
+  // The stylesheet is served from memory: its /fonts/ URLs were rewritten to carry each font's hash.
+  app.get('/css/:name', (req, res, next) => {
+    const text = assets.css.get(`/css/${req.params.name}`);
+    if (!text) return next();
+    res.set('Cache-Control', cacheControlFor(req));
+    return res.type('text/css').send(text);
+  });
+  // Cache-Control is only set for files that exist, so a 404 is never cached as immutable.
+  const staticOptions = { cacheControl: false, index: false, setHeaders: (res) => res.set('Cache-Control', cacheControlFor(res.req)) };
+  app.use('/js', express.static(path.join(here, 'public', 'js'), staticOptions));
+  app.use('/fonts', express.static(path.join(here, 'public', 'fonts'), staticOptions));
   app.use(publicRoutes(config));
   app.use(contactRoutes({ store: deps.contacts, mailer: deps.mailer, config }));
   app.use(enquiryRoutes({ repos: deps.repos, ai: deps.ai, config, mailer: deps.mailer }));
