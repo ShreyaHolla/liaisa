@@ -8,8 +8,16 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><%- n.icon %></svg><span><%= n.label %></span><% if (n.key === 'approvals' && badge > 0) { %><span class="count" aria-label="<%= badge %> waiting"><%= badge %></span><% } %>
       </a>
     <% }) %>
+    <a href="/owner/account"<%- active === 'account' ? ' aria-current="page"' : '' %> data-sheet="account-sheet" class="tab-account">
+      <img src="<%= asset('/img/liaisa-mark.svg') %>" alt="" width="28" height="28"><span>Account</span>
+    </a>
   </nav>
 </div>
+<dialog class="sheet-dialog" id="account-sheet" aria-labelledby="account-sheet-t">
+  <p class="dialog-title" id="account-sheet-t">Account</p>
+  <%- include('account-details') %>
+  <button class="btn text" type="button" data-close data-no-busy>Close</button>
+</dialog>
 <%- include('confirm-dialog') %>
 <script src="<%= asset('/js/ui.js') %>" defer></script>
 <script src="<%= asset('/js/owner.js') %>" defer></script>

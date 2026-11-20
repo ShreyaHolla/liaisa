@@ -108,6 +108,11 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
   }));
 
   // ---- Follow-ups page (tab) --------------------------------------------------------------------
+  // ---- Account: who is logged in, Setup, Log out (the phone tab opens this as a sheet) ----------
+  router.get('/account', (req, res) => {
+    res.render('pages/owner-account', { businessName: businessName(), csrfToken: res.locals.csrfToken, active: 'account' });
+  });
+
   router.get('/follow-ups', (req, res) => {
     const summary = dashboardSummary(deps());
     res.render('pages/owner-followups', {

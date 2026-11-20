@@ -16,6 +16,7 @@
       <% }) %>
     </nav>
     <div class="spacer"></div>
+    <% if (typeof owner !== 'undefined' && owner) { %><p class="biz-name sidebar__email"><%= owner.email %></p><% } %>
     <form method="post" action="/owner/logout">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <button class="btn text" type="submit" data-no-busy>Log out</button>

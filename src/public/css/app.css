@@ -392,3 +392,13 @@ details.edit summary { cursor: pointer; color: var(--plum); font-weight: 600; mi
 @media (min-width: 64rem) { .owner-bar { display: none; } }
 .powered { display: flex; align-items: center; justify-content: center; gap: var(--s-2); margin-top: var(--s-6); color: var(--slate); font-size: var(--t-sm); }
 .powered img { display: block; width: 20px; height: 20px; }
+
+/* Account tab and sheet */
+.tabbar { grid-template-columns: repeat(5, 1fr); }
+.tabbar img { display: block; width: 28px; height: 28px; }
+.account__biz { margin: 0 0 var(--s-1); font-size: var(--t-md); color: var(--plum); }
+.account__email { margin: 0 0 var(--s-4); }
+.account__actions { display: grid; gap: var(--s-3); margin-bottom: var(--s-3); }
+.account__actions form { margin: 0; }
+.account__actions .btn { width: 100%; }
+.sidebar .sidebar__email { margin: 0 0 var(--s-2); word-break: break-all; }

@@ -1,0 +1,7 @@
+<%- include('../partials/head', { title: 'Account · ' + businessName }) %>
+<%- include('../partials/owner-open', { active: 'account', businessName: businessName, csrfToken: csrfToken, pending: pending }) %>
+<div class="page-head"><h1>Account</h1></div>
+<div class="card account">
+  <%- include('../partials/account-details') %>
+</div>
+<%- include('../partials/owner-close') %>

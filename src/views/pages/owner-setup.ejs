@@ -173,9 +173,5 @@
       <% } else { %>data-confirm="Reset the services and areas to the starter examples? Your business name and details stay. Quotes already made keep their numbers."
       data-confirm-label="Reset to starter prices">Reset to starter prices</button><% } %>
   </form>
-  <form method="post" action="/owner/logout">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <button class="btn secondary" type="submit" data-no-busy>Log out</button>
-  </form>
 </div>
 <%- include('../partials/owner-close', { scripts: ['/js/share.js'] }) %>

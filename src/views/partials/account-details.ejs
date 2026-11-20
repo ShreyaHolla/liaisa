@@ -1,0 +1,12 @@
+<%
+  var acctEmail = typeof owner !== 'undefined' && owner ? owner.email : '';
+%>
+<p class="account__biz"><strong><%= businessName %></strong></p>
+<% if (acctEmail) { %><p class="slate small account__email"><%= acctEmail %></p><% } %>
+<div class="account__actions">
+  <a class="btn secondary" href="/owner/setup">Setup</a>
+  <form method="post" action="/owner/logout">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="btn danger" type="submit" data-no-busy>Log out</button>
+  </form>
+</div>
