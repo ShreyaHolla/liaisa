@@ -1,5 +1,5 @@
 // Read models for the owner dashboard and enquiry detail (F9). No writes, no prices computed.
-import { timeAgo } from '../../util/format.js';
+import { timeAgo, unitNoun } from '../../util/format.js';
 import { formatDate } from '../../util/formatDate.js';
 import { currentEstimate } from '../quotes/approval.js';
 import { understoodOf } from '../enquiries/enquiryService.js';
@@ -84,7 +84,7 @@ export function dashboardSummary({ repos }, now = new Date()) {
 /** Plain-words warning (DESIGN §4.5, §7.3). */
 export function warningText(code, pricing, requirements = {}) {
   const service = pricing.services.find((s) => s.id === requirements.service_id) ?? {};
-  const people = service.unit === 'per_person' ? 'guests' : 'units';
+  const people = service.id ? unitNoun(service) : 'units';
   switch (code) {
     case 'below_min_qty': return `Fewer ${people} (${requirements.quantity}) than this service’s minimum (${service.min_qty}).`;
     case 'above_max_qty': return `More ${people} (${requirements.quantity}) than this service’s maximum (${service.max_qty}).`;
@@ -101,8 +101,9 @@ export function warningText(code, pricing, requirements = {}) {
 export function enquiryDetail({ repos, mailer }, id, now = new Date()) {
   const enquiry = repos.enquiries.get(id);
   if (!enquiry) return null;
-  const pricing = repos.pricingConfigs.latestApproved().configJson;
   const estimate = currentEstimate(repos, id);
+  // Pages about an existing quote use the config it was priced with, so later setup edits don't rewrite its warnings.
+  const pricing = (estimate && repos.pricingConfigs.get(estimate.pricingConfigId)?.configJson) || repos.pricingConfigs.latestApproved().configJson;
   const [label, tone] = statusOf(enquiry, estimate);
   const requirements = enquiry.requirementsJson ?? {};
   const status = estimate?.status;

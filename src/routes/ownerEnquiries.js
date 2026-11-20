@@ -7,7 +7,7 @@ import { approveAndSend, editEstimate, declineEnquiry, retryQuoteEmail, shareOnW
 import { editSchema, approveSchema, flatErrors } from '../services/quotes/schema.js';
 import { dashboardSummary, enquiryDetail } from '../services/owner/dashboard.js';
 import { quoteUrl, describeLines } from '../services/quotes/messages.js';
-import { inr, timeAgo } from '../util/format.js';
+import { inr, timeAgo, unitLabel } from '../util/format.js';
 import { formatDate } from '../util/formatDate.js';
 
 const wantsJson = (req) => req.accepts(['html', 'json']) === 'json';
@@ -40,6 +40,7 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
   const router = Router();
   const deps = () => ({ repos, config, mailer });
   const businessName = () => repos.businessSettings.get()?.businessName ?? 'Liaisa';
+  const money = (n) => inr(n, repos.businessSettings.get()?.currencySymbol ?? '₹'); // symbol is display only
 
   const notFound = (req, res) => (wantsJson(req)
     ? res.status(404).json(errorBody('not_found', 'We couldn’t find that enquiry.'))
@@ -68,7 +69,7 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
   router.get('/', (req, res) => {
     const summary = dashboardSummary(deps());
     res.render('pages/owner', {
-      businessName: businessName(), csrfToken: res.locals.csrfToken, summary, inr, notice: notice(req),
+      businessName: businessName(), csrfToken: res.locals.csrfToken, summary, inr: money, notice: notice(req),
       baseUrl: config.baseUrl,
     });
   });
@@ -84,8 +85,8 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
     if (!model) return notFound(req, res);
     const link = model.estimate?.quoteToken ? quoteUrl(config, model.estimate.quoteToken) : null;
     return res.status(status).render('pages/owner-enquiry', {
-      ...model, businessName: businessName(), csrfToken: res.locals.csrfToken, inr, formatDate, timeAgo, edit,
-      rows: model.estimate ? describeLines(model.estimate.lineItemsJson) : [],
+      ...model, businessName: businessName(), csrfToken: res.locals.csrfToken, inr: money, formatDate, timeAgo, unitLabel, edit,
+      rows: model.estimate ? describeLines(model.estimate.lineItemsJson, repos.businessSettings.get()?.currencySymbol ?? '₹') : [],
       notice: notice(req), quoteLink: link,
       replyEmail: model.enquiry.customerEmail, replyPhone: model.enquiry.customerPhone?.replace(/\D/g, '') ?? null,
     });

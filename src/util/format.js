@@ -21,6 +21,11 @@ export function timeAgo(date, now = new Date()) {
   return `${Math.floor(mins / 1440)} d ago`;
 }
 
+/** 'Number of guests' -> 'guests', 'Hours' -> 'hours': the unit as a word for sentences. */
+export function unitNoun(service) {
+  return unitLabel(service).replace(/^number of /i, '').toLowerCase();
+}
+
 /** Calendar date (YYYY-MM-DD) `days` after `from`. */
 export function dateAfter(from, days) {
   return new Date(from.getTime() + days * 86400000).toISOString().slice(0, 10);

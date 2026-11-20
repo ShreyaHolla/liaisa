@@ -3,12 +3,21 @@
 import express, { Router } from 'express';
 import { ulid } from '../util/ulid.js';
 import { formatDate } from '../util/formatDate.js';
+import { unitLabel, unitNoun } from '../util/format.js';
 import { wantsJson, errorBody } from '../middleware/errors.js';
 import { enquiryLimiter } from '../middleware/rateLimits.js';
 import { makeStartSchema, replySchema, requirementsSchema, fieldErrors } from '../services/enquiries/schema.js';
 import { startEnquiry, replyToEnquiry, submitForm, presentResult, understoodOf } from '../services/enquiries/enquiryService.js';
 
 const VALIDATION_TEXT = 'Please check the highlighted fields.';
+
+/** Placeholder text for the enquiry box, built from the business's own first service and area. */
+function examplePrompt(pricing) {
+  const service = pricing.services[0];
+  const area = Object.keys(pricing.travel.areas)[0];
+  if (!service) return 'Tell us what you need, how many, which date and which area';
+  return `e.g. ${service.name} for 40 ${unitNoun(service)} on 13 Dec${area ? `, in ${area}` : ''}`;
+}
 
 export function enquiryRoutes({ repos, ai, config, mailer = null }) {
   const router = Router();
@@ -20,7 +29,8 @@ export function enquiryRoutes({ repos, ai, config, mailer = null }) {
     const biz = repos.businessSettings.get() ?? { businessName: 'Liaisa', tagline: '' };
     const pricing = repos.pricingConfigs.latestApproved()?.configJson ?? { services: [], addons: [], travel: { areas: {} } };
     return {
-      fmtDate: formatDate, biz, services: pricing.services, addons: pricing.addons, areas: Object.keys(pricing.travel.areas),
+      fmtDate: formatDate, unitLabel, biz,
+      example: examplePrompt(pricing), services: pricing.services, addons: pricing.addons, areas: Object.keys(pricing.travel.areas),
       view: 'start', publicId: null, rawText: '', firstName: '', replyChannel: 'email',
       question: '', message: '', understood: null, prefill: {}, errors: {}, values: {}, notice: '',
       ...over,

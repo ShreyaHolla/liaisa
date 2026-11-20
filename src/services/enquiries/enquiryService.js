@@ -2,8 +2,9 @@
 import { ConflictError, NotFoundError, ValidationError } from '../../errors.js';
 import { calculateEstimate } from '../pricing/calculateEstimate.js';
 import { createEstimate } from '../estimates/createEstimate.js';
-import { runTurn } from '../agent/runTurn.js';
+import { runTurn, todayIST } from '../agent/runTurn.js';
 import { normaliseRequirements } from '../agent/areas.js';
+import { unitNoun } from '../../util/format.js';
 import { notifyOwner } from '../quotes/mail.js';
 import { ownerReadyEmail } from '../quotes/messages.js';
 
@@ -71,6 +72,9 @@ export function submitForm(deps, publicId, reqs) {
     throw new ValidationError('Please check the highlighted fields.', { [field]: err.message });
   }
 
+  if (requirements.event_date && requirements.event_date < todayIST(new Date(clock(deps)))) {
+    throw new ValidationError('Please check the highlighted fields.', { event_date: 'That date has already passed. Choose a date from today on.' });
+  }
   const missing = pricing.required_fields.filter((f) => requirements[f] === undefined);
   repos.enquiries.update(found.id, {
     source: 'form',
@@ -92,7 +96,10 @@ export function understoodOf(repos, requirements = {}) {
   const pricing = repos.pricingConfigs.latestApproved().configJson;
   const out = {};
   const service = pricing.services.find((s) => s.id === requirements.service_id);
-  if (service) out.serviceName = service.name;
+  if (service) {
+    out.serviceName = service.name;
+    out.unitNoun = unitNoun(service);
+  }
   if (Number.isInteger(requirements.quantity)) out.quantity = requirements.quantity;
   if (requirements.event_date) out.eventDate = requirements.event_date;
   if (requirements.location) out.location = requirements.location;

@@ -8,18 +8,39 @@ import { createEstimate } from '../estimates/createEstimate.js';
 import { checkGuards, canAskQuestion, MAX_QUESTIONS } from './guards.js';
 import { missingFields, normaliseRequirements } from './areas.js';
 import { buildRequest } from './promptBuilder.js';
+import { formatDate } from '../../util/formatDate.js';
 import { finishSchema, cleanRequirements, salvageRequirements } from './tools.js';
 
 const PRICE_WORDS = /₹|\brs\.?\s*\d|\binr\b|\$\s*\d/i;
 const OUT_OF_SCOPE_TEXT = (name) => `Thanks for asking. This one isn't something ${name} offers, so we can't quote it.`;
 
 /** Validate a finish_intake input. Returns { data } or { error } (error text goes back to the model). */
-function evaluateFinish(input, known, pricing) {
+/** Today's calendar date in India (the business's timezone), as YYYY-MM-DD. */
+export const todayIST = (now) => new Date(now.getTime() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const ASK_FOR = { service_id: 'which service', quantity: 'how many', location: 'which area' };
+
+/** A past date is never kept or moved to another year: ask again (server wording, so it can't be skipped). */
+function pastDateQuestion(date, others) {
+  const rest = others.filter((f) => f !== 'event_date').map((f) => ASK_FOR[f]).filter(Boolean);
+  return `That date, ${formatDate(date)}, has already passed. Which date did you mean?${rest.length ? ` Please also tell us ${rest.join(', ')}.` : ''}`;
+}
+
+function evaluateFinish(input, known, pricing, today) {
   const parsed = finishSchema.safeParse(input);
   if (!parsed.success) return { error: `Invalid finish_intake: ${parsed.error.issues[0].path.join('.') || 'input'} ${parsed.error.issues[0].message}` };
   // Merge across turns, snap the location to a configured area, then work out what is missing here, not from the model.
-  const requirements = normaliseRequirements(pricing, { ...known, ...cleanRequirements(parsed.data.requirements) });
+  let requirements = normaliseRequirements(pricing, { ...known, ...cleanRequirements(parsed.data.requirements) });
+  let pastDate = null;
+  if (ISO_DATE.test(requirements.event_date ?? '') && requirements.event_date < today) {
+    pastDate = requirements.event_date;
+    const { event_date: _dropped, ...rest } = requirements;
+    requirements = rest;
+  }
   const missing = missingFields(pricing, requirements);
+  if (pastDate) {
+    return { data: { ...parsed.data, status: 'needs_info', requirements, missing_fields: missing, question_to_customer: pastDateQuestion(pastDate, missing) } };
+  }
   const data = { ...parsed.data, requirements, missing_fields: parsed.data.status === 'needs_info' ? missing : [] };
 
   if (data.question_to_customer && PRICE_WORDS.test(data.question_to_customer)) return { error: 'Never mention prices to the customer' };
@@ -98,7 +119,7 @@ export async function runTurn(deps, enquiryId, customerText) {
     // Count the request BEFORE the call so a crash mid-call still counts (TC-AGT-15).
     repos.enquiries.update(enquiryId, { aiRequestsUsed: enquiry.aiRequestsUsed + 1 });
 
-    const today = now().toISOString().slice(0, 10);
+    const today = todayIST(now());
     const req = buildRequest({
       businessName, pricing, history, known, today, turnMessages,
       missing: missingFields(pricing, known), questionsLeft: MAX_QUESTIONS - state.questionsAsked,
@@ -119,7 +140,7 @@ export async function runTurn(deps, enquiryId, customerText) {
     const finish = uses.find((b) => b.name === 'finish_intake');
     let finishError = null;
     if (finish) {
-      const result = evaluateFinish(finish.input, known, pricing);
+      const result = evaluateFinish(finish.input, known, pricing, today);
       if (result.data) return finalize(result.data);
       finishError = result.error;
       known = normaliseRequirements(pricing, { ...known, ...salvageRequirements(finish.input) });

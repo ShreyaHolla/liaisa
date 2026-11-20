@@ -1,6 +1,6 @@
 // Words for the quote email, the WhatsApp message and the owner notices (DESIGN §4.10, §7).
 // Pure functions: prices are read from the saved estimate, never computed here.
-import { inr } from '../../util/format.js';
+import { inr, unitNoun } from '../../util/format.js';
 import { formatDate } from '../../util/formatDate.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -10,18 +10,18 @@ export const ownerUrl = (config, enquiryId) => `${config.baseUrl.replace(/\/$/, 
 export const firstName = (enquiry) => enquiry.customerName.split(' ')[0];
 
 /** One printable row per line item. */
-export function describeLines(lineItems) {
+export function describeLines(lineItems, symbol = '₹') {
   return lineItems.map((l) => {
-    const qty = l.quantity !== undefined && l.unitPrice !== undefined ? `${l.quantity} × ${inr(l.unitPrice)}` : '';
-    return { label: l.reason ? `${l.label} (${l.reason})` : l.label, qty, amount: inr(l.amount), kind: l.kind };
+    const qty = l.quantity !== undefined && l.unitPrice !== undefined ? `${l.quantity} × ${inr(l.unitPrice, symbol)}` : '';
+    return { label: l.reason ? `${l.label} (${l.reason})` : l.label, qty, amount: inr(l.amount, symbol), kind: l.kind };
   });
 }
 
-/** 'for 40 guests on Sun 13 Dec', or '' when there is nothing to say. Guests only for per-person services. */
+/** 'for 40 guests on Sun 13 Dec' (the noun comes from the service's unit label), or '' when there is nothing to say. */
 export function eventPhrase(pricing, requirements = {}) {
   const service = pricing.services.find((s) => s.id === requirements.service_id);
   const parts = [];
-  if (service?.unit === 'per_person' && requirements.quantity) parts.push(`for ${requirements.quantity} guests`);
+  if (service && requirements.quantity) parts.push(`for ${requirements.quantity} ${unitNoun(service)}`);
   if (requirements.event_date) parts.push(`on ${formatDate(requirements.event_date)}`);
   return parts.join(' ');
 }
@@ -30,9 +30,10 @@ const renderTemplate = (tpl, vars) => tpl.replace(/\{\{(\w+)\}\}/g, (m, k) => (k
 
 /** F12 message: greeting, total, validity, quote link. Owner may override via templatesJson.whatsappQuote. */
 export function whatsappText({ business, enquiry, estimate, pricing, link }) {
+  const sym = business.currencySymbol ?? '₹';
   const vars = {
     customer_name: firstName(enquiry), business_name: business.businessName,
-    total: inr(estimate.total), valid_until: formatDate(estimate.validUntil), quote_link: link,
+    total: inr(estimate.total, sym), valid_until: formatDate(estimate.validUntil), quote_link: link,
   };
   const custom = business.templatesJson?.whatsappQuote;
   if (typeof custom === 'string' && custom.trim()) return renderTemplate(custom, vars);
@@ -43,17 +44,18 @@ export function whatsappText({ business, enquiry, estimate, pricing, link }) {
 
 /** Quote email: plain text and simple single-column HTML (max 600 px, inline styles). */
 export function quoteEmail({ business, enquiry, estimate, link }) {
-  const rows = describeLines(estimate.lineItemsJson);
+  const sym = business.currencySymbol ?? '₹';
+  const rows = describeLines(estimate.lineItemsJson, sym);
   const name = firstName(enquiry);
   const valid = formatDate(estimate.validUntil);
   const note = estimate.noteForCustomer;
-  const subject = `Your quote from ${business.businessName}: ${inr(estimate.total)}`;
+  const subject = `Your quote from ${business.businessName}: ${inr(estimate.total, sym)}`;
 
   const text = [
     `Hi ${name},`, '',
     `Here is your quote from ${business.businessName}.`, '',
     ...rows.map((r) => `${r.label}${r.qty ? `  ${r.qty}` : ''}  ${r.amount}`),
-    '', `Total: ${inr(estimate.total)}`, `Valid until ${valid}.`,
+    '', `Total: ${inr(estimate.total, sym)}`, `Valid until ${valid}.`,
     ...(note ? ['', note] : []),
     '', `View and accept your quote: ${link}`, '', `${business.businessName}`,
   ].join('\n');
@@ -65,7 +67,7 @@ export function quoteEmail({ business, enquiry, estimate, link }) {
 <p>Here is your quote from ${esc(business.businessName)}.</p>
 <table role="presentation" style="width:100%;border-collapse:collapse;">
 ${rows.map((r) => `<tr><td style="${td}">${esc(r.label)}${r.qty ? ` <span style="color:#555e6b;">${esc(r.qty)}</span>` : ''}</td><td style="${td}text-align:right;">${esc(r.amount)}</td></tr>`).join('\n')}
-<tr><td style="padding:10px 0;font-weight:bold;">Total</td><td style="padding:10px 0;text-align:right;font-weight:bold;">${esc(inr(estimate.total))}</td></tr>
+<tr><td style="padding:10px 0;font-weight:bold;">Total</td><td style="padding:10px 0;text-align:right;font-weight:bold;">${esc(inr(estimate.total, sym))}</td></tr>
 </table>
 <p style="color:#555e6b;">Valid until ${esc(valid)}.</p>
 ${note ? `<p>${esc(note)}</p>` : ''}

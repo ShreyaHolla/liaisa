@@ -19,7 +19,7 @@
         <form method="post" action="/api/enquiries" data-enhance novalidate>
           <div class="field">
             <label for="description">What do you need?</label>
-            <textarea id="description" name="description" rows="5" maxlength="1000" data-count="count" placeholder="e.g. Veg lunch for 40 people on 13 Dec, in Koramangala"<% if (errors.description) { %> aria-invalid="true" aria-describedby="error-description"<% } %>><%= values.description || '' %></textarea>
+            <textarea id="description" name="description" rows="5" maxlength="1000" data-count="count" placeholder="<%= example %>"<% if (errors.description) { %> aria-invalid="true" aria-describedby="error-description"<% } %>><%= values.description || '' %></textarea>
             <p class="slate small"><span id="count">0</span>/1,000</p>
             <% if (errors.description) { %><p class="field-error" id="error-description"><%= errors.description %></p><% } %>
           </div>
@@ -72,7 +72,7 @@
         <h1 tabindex="-1" data-focus>Thanks<%= firstName ? ', ' + firstName : '' %>. Your enquiry is with <%= biz.businessName %>.</h1>
         <% if (understood) { %>
           <h2 class="small-h">What we understood</h2>
-          <p><%= [understood.serviceName, understood.quantity ? understood.quantity + ' guests' : '', fmtDate(understood.eventDate), understood.location].filter(Boolean).concat(understood.addonNames || []).join(' · ') %></p>
+          <p><%= [understood.serviceName, understood.quantity ? understood.quantity + ' ' + (understood.unitNoun || 'guests') : '', fmtDate(understood.eventDate), understood.location].filter(Boolean).concat(understood.addonNames || []).join(' · ') %></p>
         <% } %>
         <p>You'll get your quote <%= replyChannel === 'whatsapp' ? 'on WhatsApp' : 'by email' %> once the owner approves it.</p>
 
@@ -88,12 +88,12 @@
             <label for="service_id">Service</label>
             <select id="service_id" name="service_id"<% if (errors.service_id) { %> aria-invalid="true" aria-describedby="error-service_id"<% } %>>
               <option value="">Choose a service</option>
-              <% services.forEach(function (s) { %><option value="<%= s.id %>"<%= pre.service_id === s.id ? ' selected' : '' %>><%= s.name %></option><% }) %>
+              <% services.forEach(function (s) { %><option value="<%= s.id %>" data-unit="<%= unitLabel(s) %>"<%= pre.service_id === s.id ? ' selected' : '' %>><%= s.name %></option><% }) %>
             </select>
             <% if (errors.service_id) { %><p class="field-error" id="error-service_id"><%= errors.service_id %></p><% } %>
           </div>
           <div class="field">
-            <label for="quantity">Guests (hours for live counters)</label>
+            <label for="quantity" id="quantity-label"><%= (services.find(function (s) { return s.id === pre.service_id; }) ? unitLabel(services.find(function (s) { return s.id === pre.service_id; })) : 'Number of guests') %></label>
             <input id="quantity" name="quantity" type="number" min="1" max="10000" value="<%= pre.quantity || '' %>"<% if (errors.quantity) { %> aria-invalid="true" aria-describedby="error-quantity"<% } %>>
             <% if (errors.quantity) { %><p class="field-error" id="error-quantity"><%= errors.quantity %></p><% } %>
           </div>

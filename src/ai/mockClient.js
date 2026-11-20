@@ -57,10 +57,10 @@ function extract(text, cat, today) {
     out.event_date = iso[1];
     rest = rest.replace(iso[0], ' ');
   } else if (dm) {
-    const [ty, tm, td] = today.split('-').map(Number);
+    // The year is today's: a date that has passed stays in the past, and the server asks again.
+    const year = Number(today.split('-')[0]);
     const mo = MONTHS.indexOf(dm[2]) + 1;
     const day = Number(dm[1]);
-    const year = mo < tm || (mo === tm && day < td) ? ty + 1 : ty;
     out.event_date = `${year}-${String(mo).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     rest = rest.replace(dm[0], ' ');
   }

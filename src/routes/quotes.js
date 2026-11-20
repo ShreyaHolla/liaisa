@@ -31,7 +31,8 @@ export function quoteRoutes({ repos, config, mailer = null }) {
     const biz = repos.businessSettings.get();
     const closed = ['won', 'lost'].includes(enquiry.status);
     return res.status(status).render('pages/quote', {
-      biz, firstName: firstName(enquiry), rows: describeLines(estimate.lineItemsJson), total: inr(estimate.total),
+      biz, firstName: firstName(enquiry), rows: describeLines(estimate.lineItemsJson, biz.currencySymbol ?? '₹'), total: inr(estimate.total, biz.currencySymbol ?? '₹'),
+      waLink: biz.whatsappNumber ? `https://wa.me/${biz.whatsappNumber}` : null,
       validUntil: formatDate(estimate.validUntil), note: estimate.noteForCustomer ?? null,
       state: enquiry.status, closed, expired: isExpired(estimate, new Date()), token: req.params.token,
       sent: typeof req.query.r === 'string' ? req.query.r : '', errors: {}, values: {},

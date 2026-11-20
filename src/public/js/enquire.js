@@ -5,6 +5,12 @@
   if (!root || !window.fetch || !window.DOMParser) return;
 
   function sync() {
+    var svc = root.querySelector('#service_id');
+    var label = root.querySelector('#quantity-label');
+    if (svc && label) {
+      var opt = svc.options[svc.selectedIndex];
+      label.textContent = (opt && opt.getAttribute('data-unit')) || 'Number of guests';
+    }
     var checked = root.querySelector('input[name="channel"]:checked');
     root.querySelectorAll('[data-for]').forEach(function (el) {
       var show = !checked || el.getAttribute('data-for') === checked.value;

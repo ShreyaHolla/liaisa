@@ -84,7 +84,7 @@
             <form method="post" action="/owner/enquiries/<%= enquiry.id %>/edit">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <div class="field">
-                <label for="quantity">Quantity<%= pricing.services.find(function (s) { return s.id === requirements.service_id; })?.unit === 'per_person' ? ' (guests)' : '' %></label>
+                <label for="quantity"><%= unitLabel(pricing.services.find(function (s) { return s.id === requirements.service_id; })) %></label>
                 <input id="quantity" name="quantity" type="number" min="1" max="10000" inputmode="numeric" required
                   value="<%= edit.values.quantity !== undefined ? edit.values.quantity : requirements.quantity %>"
                   <%= edit.errors.quantity ? 'aria-invalid="true"' : '' %>>

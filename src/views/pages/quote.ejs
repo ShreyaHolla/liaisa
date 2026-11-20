@@ -51,6 +51,7 @@
           <button class="btn danger-text" type="submit">Decline</button>
         </form>
       <% } %>
+      <% if (waLink) { %><p class="small"><a href="<%= waLink %>">Message <%= biz.businessName %> on WhatsApp</a></p><% } %>
     </article>
   </main>
 </body>
