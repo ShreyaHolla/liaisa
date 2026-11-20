@@ -20,7 +20,7 @@ function resolve(deps, type, ref, now) {
   if (type === 'lead') {
     const lead = leadRows(deps, now).find((l) => String(l.id) === ref);
     if (!lead) throw new NotFoundError('That lead is not in your list.');
-    return { subject: { type: 'lead', name: lead.name, note: lead.note }, key: lead.key, channel: lead.channel, block: lead.block, leadId: lead.id,
+    return { subject: { type: 'lead', name: lead.name, note: lead.note, organisation: lead.kind === 'discovered' }, key: lead.key, channel: lead.channel, block: lead.block, leadId: lead.id,
       contact: { email: lead.email, phone: lead.phone }, name: lead.name };
   }
   const row = reconnectRows(deps, now).find((r) => r.key === ref);
@@ -69,6 +69,7 @@ export async function createDraft(deps, { type, ref }) {
   }
   const footer = `\n\nYou can reach us any time: ${config.baseUrl.replace(/\/$/, '')}/enquire`;
   const body = result?.text ?? factsFallback(who.subject, business);
+  if (type === 'lead' && who.leadId) repos.leads.update(who.leadId, { status: 'drafted' });
   return repos.outreach.update(row.id, { message: `${body}${footer}`, source: result?.source ?? 'template' });
 }
 
@@ -109,6 +110,7 @@ export async function sendDraft(deps, draftId, text) {
   if (row.channel === 'whatsapp') {
     const url = buildWaLink(who.contact.phone, clean); // validates the number before anything is recorded
     repos.outreach.update(row.id, { status: 'opened', message: clean, sentAt: now });
+    markLeadSent(repos, row);
     return { channel: 'whatsapp', status: 'opened', url };
   }
   if (!mailer) throw conflict('mail_off', 'Email sending is switched off.');
@@ -122,10 +124,31 @@ export async function sendDraft(deps, draftId, text) {
       subject: `A note from ${business.businessName}`, text: clean,
     });
     repos.outreach.update(row.id, ok ? { status: 'sent', sentAt: clock(deps) } : { status: 'failed' });
+    if (ok) markLeadSent(repos, row);
     return { channel: 'email', status: ok ? 'sent' : 'failed' };
   } finally {
     inFlight.delete(row.id);
   }
+}
+
+/** A lead moves to Sent once a message went out (or WhatsApp was opened). */
+function markLeadSent(repos, row) {
+  if (row.subjectType !== 'lead' || !row.leadId) return;
+  const lead = repos.leads.get(row.leadId);
+  if (lead && ['new', 'drafted'].includes(lead.status)) repos.leads.update(lead.id, { status: 'sent' });
+}
+
+/** Owner updates a lead: 'replied' (they answered) or 'not_interested' (dismissed; no more drafts for them). */
+export function updateLeadStatus(deps, leadId, action) {
+  const { repos } = deps;
+  const lead = repos.leads.get(leadId);
+  if (!lead) throw new NotFoundError('That lead is not in your list.');
+  if (action === 'replied') {
+    repos.leads.update(leadId, { status: 'replied' });
+    return;
+  }
+  repos.leads.update(leadId, { status: 'not_interested', doNotContact: true });
+  for (const o of repos.outreach.all()) if (o.leadId === leadId && o.status === 'draft') repos.outreach.update(o.id, { status: 'discarded', message: '' });
 }
 
 /** Never contact this person again (all their enquiries, or the lead). */

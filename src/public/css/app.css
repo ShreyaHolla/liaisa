@@ -170,3 +170,9 @@ dialog p { margin-top: 0; font-size: var(--t-md); }
 .tabs { display: flex; gap: var(--s-4); margin: var(--s-4) 0 var(--s-2); border-bottom: 1px solid var(--line); }
 .tabs a { padding: var(--s-3) var(--s-2); color: var(--plum); text-decoration: none; min-height: 44px; box-sizing: border-box; }
 .tabs a[aria-current="page"] { font-weight: 600; border-bottom: 3px solid var(--plum); }
+
+/* M10b: lead cards */
+.cards { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-4); }
+.card { background: var(--white); border: 1px solid var(--line); border-radius: var(--r-sm); padding: var(--s-4); }
+.card h3 { margin: 0 0 var(--s-2); font-size: var(--t-base); color: var(--plum); }
+.card p { margin: 0 0 var(--s-2); }

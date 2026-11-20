@@ -14,6 +14,7 @@
     <% if (notice) { %>
       <p class="banner tone-<%= notice[0] === 'ok' ? 'done' : 'problem' %>" role="<%= notice[0] === 'ok' ? 'status' : 'alert' %>"><%= notice[1] %></p>
     <% } %>
+    <p class="slate small" role="note">Check each contact before you send. You are responsible for what you send.</p>
     <% var done = ['sent', 'opened', 'sending', 'discarded'].includes(draft.status); %>
 
     <% if (done) { %>

@@ -18,7 +18,7 @@ export const OWNER_EMAIL = 'owner@mehfilkitchen.example';
  * Fresh seeded app with the owner area on. `mail`: 'fake' (default) injects a recording mailer,
  * 'fail' one that rejects every send, 'off' none (MAIL_ENABLED=false).
  */
-export function setupOwner({ mail = 'fake', env = {} } = {}) {
+export function setupOwner({ mail = 'fake', env = {}, steps } = {}) {
   const config = loadConfig({
     NODE_ENV: 'test', OWNER_PASSWORD_HASH: HASH, SESSION_SECRET: 'x'.repeat(48),
     BASE_URL: 'https://liaisa.co.in', MAIL_FROM, OWNER_EMAIL,
@@ -28,7 +28,7 @@ export function setupOwner({ mail = 'fake', env = {} } = {}) {
   const repos = createRepos();
   seed(repos);
   const mailer = mail === 'off' ? null : createFakeMailer({ fail: mail === 'fail' });
-  const ai = createMockClient();
+  const ai = createMockClient(steps ? { steps } : {});
   const app = createApp(config, { contacts: createContactMessageStore(), repos, mailer, ai });
   return { app, repos, mailer, config, ai };
 }

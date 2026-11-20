@@ -40,6 +40,11 @@
           <%- fe('currencySymbol') %>
         </div>
         <div class="field">
+          <label for="city">City (used to keep searches for clients local)</label>
+          <input id="city" name="city" type="text" maxlength="80" value="<%= v.city %>"<%- bad('city') %>>
+          <%- fe('city') %>
+        </div>
+        <div class="field">
           <label for="whatsappNumber">WhatsApp number (optional)</label>
           <input id="whatsappNumber" name="whatsappNumber" type="tel" maxlength="30" value="<%= v.whatsappNumber %>"<%- bad('whatsappNumber') %>>
           <%- fe('whatsappNumber') %>

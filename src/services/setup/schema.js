@@ -39,6 +39,7 @@ export function makeSetupSchema(countryCode) {
     tagline: z.preprocess(blank, z.string().trim().max(200, 'Keep the tagline under 200 characters.').optional()),
     currencySymbol: z.preprocess(blank, z.string().trim().min(1).max(3, 'Use 1 to 3 characters, like ₹.').default('₹')),
     whatsappNumber: z.preprocess(blank, z.string().trim().max(30, 'Enter a 10-digit mobile number, like 98450 12345.').optional()),
+    city: z.preprocess(blank, z.string().trim().max(80, 'Keep the city under 80 characters.').optional()),
     followupAfterDays: z.preprocess(blank, z.coerce.number({ error: 'Enter a whole number of days, 0 to 60.' }).int('Enter a whole number of days, 0 to 60.').min(0, 'Enter a whole number of days, 0 to 60.').max(60, 'Enter a whole number of days, 0 to 60.').default(2)),
     weekendPct: percent,
     taxPct: percent,

@@ -140,6 +140,8 @@ export function leadRows({ repos }, now = new Date()) {
   return repos.leads.all().sort((a, b) => b.id - a.id).map((l) => {
     const key = identityOf({ email: l.email, phone: l.phone, channel: l.email ? 'email' : 'whatsapp' });
     const ids = repos.enquiries.list().filter((e) => keyOfEnquiry(e) === key).map((e) => e.id);
-    return { ...l, key, channel: l.email ? 'email' : 'whatsapp', block: blockOf(repos, key, ids, now), lastContact: lastContactOf(repos, key, ids) };
+    const noContact = { code: 'no_contact', text: 'No public contact listed. Open the source page to find one.' };
+    const block = !key ? noContact : l.status === 'not_interested' ? { code: 'not_interested', text: 'Marked as not interested.' } : blockOf(repos, key, ids, now);
+    return { ...l, key, channel: l.email ? 'email' : 'whatsapp', block, lastContact: key ? lastContactOf(repos, key, ids) : null };
   });
 }

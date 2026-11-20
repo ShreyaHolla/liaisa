@@ -1,7 +1,7 @@
 // The standard, no-AI message. Used when AI is off or capped, when the model's draft keeps failing
 // validation, and by the mock AI client (so mock drafts are deterministic). Facts in, text out.
 export function templateDraft(facts) {
-  const first = `Hi ${facts.first_name}, this is ${facts.business_name}.`;
+  const first = facts.organisation ? `Hi team at ${facts.organisation}, this is ${facts.business_name}.` : `Hi ${facts.first_name}, this is ${facts.business_name}.`;
   const close = ' Just reply to this message if there is anything we can do.';
   if (facts.who_they_are !== undefined) {
     return `${first} We cater for events and would be glad to help if you are planning something.${close}`;

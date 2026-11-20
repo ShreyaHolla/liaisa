@@ -54,6 +54,14 @@ export function draftIssues(text, facts) {
 /** What Claude is told. First name only; no email, phone, surname, price or quote link. */
 export function factsFor(subject, business) {
   const facts = { first_name: subject.name.trim().split(/\s+/)[0], business_name: business.businessName };
+  if (subject.type === 'lead' && subject.organisation) {
+    // An organisation found on the web: greet the team, not a person.
+    facts.first_name = 'team';
+    facts.organisation = subject.name;
+    facts.who_they_are = subject.note || 'a local organisation';
+    facts.reason = 'new organisation the owner would like to reach';
+    return facts;
+  }
   if (subject.type === 'lead') {
     facts.who_they_are = subject.note || 'a new contact';
     facts.reason = 'new contact the owner would like to reach';
