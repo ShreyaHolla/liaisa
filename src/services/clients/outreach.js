@@ -36,7 +36,8 @@ const hasContact = (channel, contact) => (channel === 'whatsapp' ? Boolean(conta
 /** Drafts created today (IST), counting every one, AI or template. */
 export function draftsToday(repos, now) {
   const today = todayIST(now);
-  return repos.outreach.all().filter((o) => todayIST(o.createdAt) === today).length;
+  // Messages sent from a lead's Contact section (fixed template, no AI) don't use a draft slot.
+  return repos.outreach.all().filter((o) => o.kind !== 'contact' && todayIST(o.createdAt) === today).length;
 }
 
 /**
@@ -81,7 +82,7 @@ function factsFallback(subject, business) {
 const URL_IN_TEXT = /\b(?:https?:\/\/|www\.)\S+/gi;
 
 /** Only the business's own links may go out in a message. */
-function checkLinks(text, baseUrl) {
+export function checkLinks(text, baseUrl) {
   const own = baseUrl.replace(/\/$/, '');
   for (const link of text.match(URL_IN_TEXT) ?? []) {
     if (!link.startsWith(`${own}/`) && link !== own) throw new ValidationError('Only your own enquiry or quote link can go in a message.', { message: 'Only your own enquiry or quote link can go in a message.' });
@@ -175,6 +176,8 @@ export function addLead(deps, input) {
 /** Messages that were sent, opened or failed, newest first (the activity log). */
 export function activityLog({ repos }, limit = 20) {
   const label = { sent: 'Sent', opened: 'Opened in WhatsApp', failed: 'Didn’t send', sending: 'Sending' };
+  // From a lead's Contact section the log says how: "Contacted by email, opened" (the owner presses send in their own app).
+  const viaContact = (o) => ({ sent: `Contacted by ${o.channel === 'whatsapp' ? 'WhatsApp' : 'email'}, sent`, opened: `Contacted by ${o.channel === 'whatsapp' ? 'WhatsApp' : 'email'}, opened` }[o.status]);
   return repos.outreach.all().filter((o) => !['draft', 'discarded'].includes(o.status)).sort((a, b) => (b.sentAt ?? b.createdAt) - (a.sentAt ?? a.createdAt)).slice(0, limit)
-    .map((o) => ({ name: o.name, channel: o.channel, status: label[o.status], at: o.sentAt ?? o.createdAt }));
+    .map((o) => ({ name: o.name, channel: o.channel, status: ((o.kind === 'contact' || o.viaContact) && viaContact(o)) || label[o.status], at: o.sentAt ?? o.createdAt }));
 }

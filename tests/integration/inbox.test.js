@@ -553,7 +553,7 @@ test('fonts are served from our own host and the CSP is unchanged: no inline scr
   assert.match(csp, /script-src 'self'/);
   assert.ok(!/script-src[^;]*unsafe-inline/.test(csp));
   assert.match(csp, /font-src 'self'/);
-  assert.match(csp, /form-action 'self' https:\/\/wa\.me https:\/\/api\.whatsapp\.com https:\/\/web\.whatsapp\.com/);
+  assert.match(csp, /form-action 'self' https:\/\/wa\.me https:\/\/api\.whatsapp\.com https:\/\/web\.whatsapp\.com mailto:/);
 });
 
 test('every screen: mobile viewport, no inline style attributes, no inline scripts, a way to skip to the content on owner pages', async () => {

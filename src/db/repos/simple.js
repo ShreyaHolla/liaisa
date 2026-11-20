@@ -45,8 +45,8 @@ export function createAiCallStore(scope) {
 /** Client Finder leads the owner typed in (M10-lite). One at a time; no imports, no scraping. */
 export function createLeadStore(scope) {
   const t = createTable({ name: 'leads', scope,
-    enums: { status: ['new', 'drafted', 'sent', 'replied', 'not_interested'], kind: ['manual', 'discovered'] },
-    defaults: { email: null, phone: null, note: '', doNotContact: false, status: 'new', kind: 'manual', notes: '', sourceUrl: null, sourceDomain: null, orgType: null, whyFit: null, publicContact: null },
+    enums: { status: ['new', 'drafted', 'sent', 'contacted', 'replied', 'not_interested'], kind: ['manual', 'discovered'] },
+    defaults: { typedContact: false, email: null, phone: null, note: '', doNotContact: false, status: 'new', kind: 'manual', notes: '', sourceUrl: null, sourceDomain: null, orgType: null, whyFit: null, publicContact: null },
   });
   return { create: t.insert, update: t.update, get: t.get, all: t.all };
 }

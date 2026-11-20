@@ -1,0 +1,47 @@
+<%
+  var hasContact = Boolean(l.email || l.phone);
+  var stop = l.block && ['do_not_contact', 'not_interested', 'recent'].includes(l.block.code);
+  var from = l.typedContact || l.kind === 'manual' ? 'you added this' : 'from the cited page';
+%>
+<details class="edit contact" id="lead-<%= l.id %>"<%= c.open ? ' open' : '' %>>
+  <summary>Contact</summary>
+  <% if (!hasContact) { %>
+    <p class="small slate">No contact was shown on the cited page. If you find one yourself, add it here.</p>
+    <form method="post" action="/owner/clients/leads/<%= l.id %>/contact" data-enhance>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="contact-<%= l.id %>">Email or WhatsApp number</label>
+        <input id="contact-<%= l.id %>" name="contact" type="text" maxlength="200" autocomplete="off">
+      </div>
+      <button class="btn secondary" type="submit">Save contact</button>
+    </form>
+  <% } else { %>
+    <p class="small">Contact: <%= l.email || l.phone %> <span class="slate">(<%= from %>)</span></p>
+    <% if (stop) { %>
+      <p class="slate small"><%= l.block.text %></p>
+    <% } else { %>
+      <form method="post" action="/owner/clients/leads/<%= l.id %>/message" data-enhance>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <% if (c.draftId) { %><input type="hidden" name="draftId" value="<%= c.draftId %>"><% } %>
+        <p class="tag-row">
+          <% if (c.kind === 'ai') { %><%- include('ai-badge') %> Written by AI from the facts we hold. Edit it before you send.
+          <% } else if (c.kind === 'standard') { %><span class="tag">Standard message</span> Edit it as you like.
+          <% } else { %><span class="tag">Fixed template, no AI</span> Edit it as you like.<% } %>
+        </p>
+        <div class="field">
+          <label for="msg-<%= l.id %>">Message</label>
+          <textarea id="msg-<%= l.id %>" name="message" rows="9" maxlength="1000"><%= c.text %></textarea>
+        </div>
+        <div class="actions">
+          <% if (l.email) { %>
+            <button class="btn secondary" type="submit" name="action" value="mailto">Open in my email app</button>
+            <% if (mailerOn) { %><button class="btn" type="submit" name="action" value="send">Send from Liaisa</button><% } %>
+          <% } %>
+          <% if (l.phone) { %><button class="btn secondary" type="submit" name="action" value="whatsapp">Open in WhatsApp</button><% } %>
+          <button class="btn text" type="submit" formaction="/owner/clients/leads/<%= l.id %>/personalise">Personalise with AI</button>
+        </div>
+        <p class="slate small">You press send in your own app. Liaisa never sends to a lead on its own.</p>
+      </form>
+    <% } %>
+  <% } %>
+</details>

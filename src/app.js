@@ -44,7 +44,7 @@ export function createApp(config, deps = buildDeps(config)) {
   // chain for the owner's "Send on WhatsApp" form POST (F12).
   app.use(helmet({
     contentSecurityPolicy: {
-      directives: { ...helmet.contentSecurityPolicy.getDefaultDirectives(), 'form-action': ["'self'", 'https://wa.me', 'https://api.whatsapp.com', 'https://web.whatsapp.com'] },
+      directives: { ...helmet.contentSecurityPolicy.getDefaultDirectives(), 'form-action': ["'self'", 'https://wa.me', 'https://api.whatsapp.com', 'https://web.whatsapp.com', 'mailto:'] },
     },
   }));
 

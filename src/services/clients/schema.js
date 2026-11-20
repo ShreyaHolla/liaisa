@@ -18,6 +18,23 @@ export function makeLeadSchema(countryCode) {
     : { name: d.name, note: d.note, email: null, phone: normalisePhone(d.contact, countryCode) }));
 }
 
+/** A contact typed in for a lead that has none: one email address or one mobile number. */
+export function makeContactSchema(countryCode) {
+  return z.object({
+    contact: z.string({ error: CONTACT }).trim().min(1, CONTACT).max(200, CONTACT)
+      .refine((v) => (v.includes('@') ? z.email().max(200).safeParse(v).success : normalisePhone(v, countryCode) !== null), CONTACT),
+  }).transform((d) => (d.contact.includes('@')
+    ? { email: d.contact.toLowerCase(), phone: null }
+    : { email: null, phone: normalisePhone(d.contact, countryCode) }));
+}
+
+/** The three ways to reach a lead from its Contact section. The message is the owner's edited text. */
+export const contactActionSchema = z.object({
+  action: z.enum(['mailto', 'send', 'whatsapp']),
+  message: z.string({ error: 'Write a message.' }).trim().min(5, 'Write a message.').max(1000, 'Keep it under 1,000 characters.'),
+  draftId: z.preprocess((v) => (v === '' || v === undefined ? undefined : Number(v)), z.number().int().positive().optional()),
+});
+
 /** Who a draft or a do-not-contact click is about. */
 export const subjectSchema = z.object({
   type: z.enum(['customer', 'lead']),

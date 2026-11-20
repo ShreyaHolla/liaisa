@@ -6,7 +6,9 @@ import { errorBody } from '../middleware/errors.js';
 import { reconnectRows, leadRows } from '../services/clients/people.js';
 import { createDraft, sendDraft, markDoNotContact, addLead, activityLog, draftsToday, updateLeadStatus } from '../services/clients/outreach.js';
 import { discoverClients, searchesToday, runsToday, CACHE_HOURS } from '../services/clients/discovery.js';
-import { makeLeadSchema, subjectSchema, sendSchema } from '../services/clients/schema.js';
+import { makeLeadSchema, makeContactSchema, contactActionSchema, subjectSchema, sendSchema } from '../services/clients/schema.js';
+import { composeTemplate, saveContact, contactLead } from '../services/clients/contact.js';
+import { todayIST } from '../services/agent/runTurn.js';
 import { flatErrors } from '../services/quotes/schema.js';
 import { limitsOf } from '../services/tenants/limits.js';
 import { formatDate } from '../util/formatDate.js';
@@ -36,6 +38,11 @@ const NOTICES = {
   discovery_failed: ['problem', 'The search didn’t work this time. Nothing was saved. Try again in a minute.'],
   lead_updated: ['ok', 'Lead updated.'],
   not_interested: ['problem', 'You marked that lead as not interested, so no message can be drafted.'],
+  contact_saved: ['ok', 'Contact saved.'],
+  invalid_contact: ['problem', 'Enter an email address or a 10-digit mobile number, like 98450 12345.'],
+  invalid_message: ['problem', 'Write a message of 5 to 1,000 characters.'],
+  contact_exists: ['problem', 'This lead already has a contact.'],
+  mail_off: ['problem', 'Email sending is switched off, so use “Open in my email app” instead.'],
   conflict: ['problem', 'That message has already been sent, or the person has changed. Check the list.'],
 };
 const notice = (req) => (typeof req.query.n === 'string' && Object.hasOwn(NOTICES, req.query.n) ? NOTICES[req.query.n] : null);
@@ -44,6 +51,7 @@ export function ownerClientRoutes({ repos, config, ai, mailer }) {
   const router = Router();
   const deps = () => ({ repos, config, ai, mailer });
   const leadSchema = makeLeadSchema(config.whatsappCountryCode);
+  const contactSchema = makeContactSchema(config.whatsappCountryCode);
   const businessName = () => repos.businessSettings.get()?.businessName ?? 'Liaisa';
   const notFound = (req, res) => (wantsJson(req)
     ? res.status(404).json(errorBody('not_found', 'We couldn’t find that.'))
@@ -56,20 +64,38 @@ export function ownerClientRoutes({ repos, config, ai, mailer }) {
     const status = err instanceof ValidationError ? 400 : 409;
     if (wantsJson(req)) return res.status(status).json(errorBody(err.code ?? (status === 400 ? 'validation_error' : 'conflict'), err.message, err.details));
     const key = err.code && Object.hasOwn(NOTICES, err.code) ? err.code : 'conflict';
-    return res.redirect(303, `${back}${back.includes('?') ? '&' : '?'}n=${key}`);
+    const [path, hash] = back.split('#');
+    return res.redirect(303, `${path}${path.includes('?') ? '&' : '?'}n=${key}${hash ? `#${hash}` : ''}`);
   }
   const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
   // ---- The page -------------------------------------------------------------------------------
+  /** What each lead's Contact section shows: the fixed template, or the AI draft the owner just asked for. */
+  function composeFor(req, res, leads) {
+    const owner = res.locals.owner?.name;
+    const open = Number.parseInt(req.query.compose, 10);
+    const draft = Number.parseInt(req.query.draft, 10);
+    return Object.fromEntries(leads.map((l) => {
+      const ai = l.id === open && Number.isInteger(draft) ? repos.outreach.get(draft) : null;
+      const usable = Boolean(ai && ai.leadId === l.id && ai.status === 'draft');
+      return [l.id, {
+        text: usable ? ai.message : composeTemplate(deps(), l, owner), kind: usable ? (ai.source === 'ai' ? 'ai' : 'standard') : 'template',
+        draftId: usable ? ai.id : null, open: l.id === open,
+      }];
+    }));
+  }
+
   function renderPage(req, res, status = 200, over = {}) {
     const wanted = over.tab ?? req.query.tab;
     const tab = ['leads', 'find'].includes(wanted) ? wanted : 'reconnect';
     const now = new Date();
+    const manual = tab === 'leads' ? leadRows(deps(), now).filter((l) => l.kind !== 'discovered') : [];
+    const discovered = tab === 'find' ? leadRows(deps(), now).filter((l) => l.kind === 'discovered') : [];
     res.status(status).render('pages/owner-clients', {
       businessName: businessName(), csrfToken: res.locals.csrfToken, tab, notice: notice(req),
       rows: tab === 'reconnect' ? reconnectRows(deps(), now) : [],
-      leads: tab === 'leads' ? leadRows(deps(), now).filter((l) => l.kind !== 'discovered') : [],
-      found: tab === 'find' ? leadRows(deps(), now).filter((l) => l.kind === 'discovered') : [],
+      leads: manual, found: discovered, composed: composeFor(req, res, [...manual, ...discovered]), mailerOn: Boolean(mailer),
+      dateOf: (d) => formatDate(todayIST(d)),
       focus: { services: repos.pricingConfigs.latestApproved().configJson.services.map((s) => s.name), areas: Object.keys(repos.pricingConfigs.latestApproved().configJson.travel.areas) },
       searchesToday: searchesToday(repos, now), runsToday: runsToday(repos, now), discoveryCap: limitsOf(repos, config).discoveryRuns,
       activity: activityLog(deps()), draftsToday: draftsToday(repos, now), cap: limitsOf(repos, config).drafts,
@@ -109,6 +135,59 @@ export function ownerClientRoutes({ repos, config, ai, mailer }) {
       return res.redirect(303, `/owner/clients?tab=find&n=${n}`);
     } catch (err) {
       return fail(req, res, err, next, '/owner/clients?tab=find');
+    }
+  }));
+
+  // ---- Contact section on a lead card ---------------------------------------------------------
+  // Ids are unique across businesses and this router only sees this business's leads, so another business's lead is a 404.
+  const leadOr404 = (req, res) => {
+    const id = Number(req.params.id);
+    const lead = Number.isInteger(id) && id > 0 ? repos.leads.get(id) : null;
+    if (!lead) notFound(req, res);
+    return lead;
+  };
+  /** Back to the lead's card with its Contact section open. */
+  const cardUrl = (lead, { draft = null } = {}) => `/owner/clients?tab=${lead.kind === 'discovered' ? 'find' : 'leads'}&compose=${lead.id}${draft ? `&draft=${draft}` : ''}#lead-${lead.id}`;
+  const withNotice = (url, n) => { const [p, h] = url.split('#'); return `${p}&n=${n}#${h}`; };
+
+  router.post('/clients/leads/:id/contact', (req, res, next) => {
+    const lead = leadOr404(req, res);
+    if (!lead) return undefined;
+    try {
+      const parsed = contactSchema.safeParse(req.body ?? {});
+      if (!parsed.success) throw Object.assign(new ValidationError(NOTICES.invalid_contact[1], flatErrors(parsed.error)), { code: 'invalid_contact' });
+      const saved = saveContact(deps(), lead.id, parsed.data);
+      return wantsJson(req) ? res.json({ id: lead.id, email: Boolean(saved.email), phone: Boolean(saved.phone) }) : res.redirect(303, withNotice(cardUrl(lead), 'contact_saved'));
+    } catch (err) {
+      return fail(req, res, err, next, cardUrl(lead));
+    }
+  });
+
+  router.post('/clients/leads/:id/message', wrap(async (req, res, next) => {
+    const lead = leadOr404(req, res);
+    if (!lead) return undefined;
+    try {
+      const parsed = contactActionSchema.safeParse(req.body ?? {});
+      if (!parsed.success) throw Object.assign(new ValidationError(NOTICES.invalid_message[1], flatErrors(parsed.error)), { code: 'invalid_message' });
+      const result = await contactLead(deps(), lead.id, parsed.data);
+      if (wantsJson(req)) return res.json(result);
+      if (result.url) return res.redirect(302, result.url); // mailto: or wa.me: the owner presses send in their own app
+      return res.redirect(303, withNotice(cardUrl(lead), result.status === 'sent' ? 'sent' : 'send_failed'));
+    } catch (err) {
+      return fail(req, res, err, next, cardUrl(lead));
+    }
+  }));
+
+  // "Personalise with AI": the existing draft (AI badge, daily draft cap counted). The template stays the default.
+  router.post('/clients/leads/:id/personalise', wrap(async (req, res, next) => {
+    const lead = leadOr404(req, res);
+    if (!lead) return undefined;
+    try {
+      const draft = await createDraft(deps(), { type: 'lead', ref: String(lead.id) });
+      if (wantsJson(req)) return res.status(201).json({ draftId: draft.id, message: draft.message, source: draft.source });
+      return res.redirect(303, cardUrl(lead, { draft: draft.id }));
+    } catch (err) {
+      return fail(req, res, err, next, cardUrl(lead));
     }
   }));
 

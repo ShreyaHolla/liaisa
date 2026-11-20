@@ -863,7 +863,7 @@ paths:
                         sourceUrl: { type: string }
                         sourceDomain: { type: string }
                         publicContact: { type: [string, 'null'] }
-                        status: { type: string, enum: [new, drafted, sent, replied, not_interested] }
+                        status: { type: string, enum: [new, drafted, sent, contacted, replied, not_interested] }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/CsrfFailed' }
         '409':
@@ -871,6 +871,116 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+
+  /owner/clients/leads/{id}/contact:
+    post:
+      tags: [owner]
+      summary: Save a contact the owner typed in for a lead that has none
+      description: |
+        Used when the cited page showed no contact. One email address or one mobile number (normalised for WhatsApp).
+        Refused when the lead already has a contact (`contact_exists`) or the contact belongs to another lead (`duplicate_lead`).
+        A lead id from another business is a 404.
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contact]
+              properties:
+                contact: { type: string, description: 'An email address or a 10-digit mobile number' }
+          application/x-www-form-urlencoded:
+            schema: { type: object }
+      responses:
+        '200':
+          description: Saved (JSON clients). HTML clients get a 303 back to the card.
+          content:
+            application/json:
+              schema: { type: object, properties: { id: { type: integer }, email: { type: boolean }, phone: { type: boolean } } }
+        '400': { description: 'Error code `invalid_contact`' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 'Error code is one of: contact_exists, duplicate_lead' }
+
+  /owner/clients/leads/{id}/message:
+    post:
+      tags: [owner]
+      summary: Contact a lead from its Contact section (mailto, Send from Liaisa, or WhatsApp)
+      description: |
+        The message starts as a fixed template (business name, owner first name, the lead's organisation, the matched
+        service and area, and the business's own `BASE_URL/b/<slug>/enquire` link) that the owner can edit. No AI
+        call and no draft-cap use. `action`: `mailto` returns a `mailto:` URL (subject and CRLF-encoded body) and
+        `whatsapp` a `wa.me` URL; both are recorded as "opened" and HTML clients get a 302 to the link, because the
+        owner presses send in their own app. `send` ("Send from Liaisa", only when email is on) sends through the
+        mail service, saved first, and is recorded `sent` or `failed`. Refused for do-not-contact leads and anyone
+        contacted in the last 7 days across outreach and follow-ups. Success moves the lead to `contacted`
+        (`sent` only counts for email actually sent). Only the business's own links may appear in the message.
+        `draftId` (optional) is the AI draft from "Personalise with AI": it becomes the record for this contact.
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, message]
+              properties:
+                action: { type: string, enum: [mailto, send, whatsapp] }
+                message: { type: string, minLength: 5, maxLength: 1000 }
+                draftId: { type: integer, minimum: 1 }
+          application/x-www-form-urlencoded:
+            schema: { type: object }
+      responses:
+        '200':
+          description: JSON clients
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [channel, status]
+                properties:
+                  channel: { type: string, enum: [email, whatsapp] }
+                  status: { type: string, enum: [opened, sent, failed] }
+                  url: { type: string, description: '`mailto:` or `wa.me` link (opened only)' }
+        '302': { description: HTML clients: redirect to the mailto or wa.me link }
+        '400': { description: 'Error code `invalid_message`, or a link that is not the business''s own' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 'Error code is one of: do_not_contact, not_interested, recent, no_contact, mail_off, already_sent' }
+
+  /owner/clients/leads/{id}/personalise:
+    post:
+      tags: [owner]
+      summary: Personalise a lead's message with AI (the existing outreach draft)
+      description: |
+        Makes (or reuses) the lead's AI draft: the AI badge, one draft slot counted against the daily draft cap, the
+        same rules as "Draft message". The card then shows that text in the message box; the template remains the
+        default on every other page load. The lead's contact is never sent to the model.
+      security: [{ cookieAuth: [], csrfToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        '201':
+          description: Draft saved (JSON clients). HTML clients get a 303 to the card with the draft open.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  draftId: { type: integer }
+                  message: { type: string }
+                  source: { type: string, enum: [ai, template] }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CsrfFailed' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 'Error code is one of: draft_limit, do_not_contact, not_interested, recent, no_contact' }
 
   /owner/clients/leads/{id}/status:
     post:
