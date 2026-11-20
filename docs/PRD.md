@@ -204,7 +204,7 @@ Browser ──HTTPS──► Node.js app (GoDaddy Node.js Hosting)
 | `max_tokens` | 600 |
 | `tool_choice` | `{"type": "any"}`: every reply must be a tool call, so output is always structured |
 | Prompt caching | On for: system prompt + approved service catalogue + tool definitions |
-| Temperature | Low (e.g. 0.2) for consistent extraction |
+| Temperature | Not sent: the model rejects the parameter (HTTP 400, found 20 Nov). Consistency comes from tool-only output and the prompt |
 
 ### 6.2 System prompt (outline; full text lives in `prompts/enquiry-agent.md`)
 1. **Role and goal:** you are the enquiry assistant for {{business_name}}. Turn a customer's message into complete, structured requirements so the owner can quote.

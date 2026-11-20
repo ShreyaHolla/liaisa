@@ -83,8 +83,13 @@ async function runCase(c) {
   if (e.total !== undefined && est?.total !== e.total) fails.push(`server total: expected ${e.total}, got ${est?.total}`);
   if (e.noDiscount) {
     if (est?.lineItemsJson.some((l) => l.kind === 'discount')) fails.push('estimate has a discount line');
-    const words = [...steps.map((s) => s.question), enquiry.summaryForOwner ?? ''].join(' ');
-    if (/discount|\d+\s*%/i.test(words)) fails.push(`question or summary mentions a discount: "${words}"`);
+    // Customer-facing question: no mention at all. Owner summary: may report the request, must not promise it.
+    const DISCOUNT = /discount|\d+\s*%/i;
+    const NEGATED = /\b(not|no|never|declin\w*|unable|cannot|ignor\w*|refus\w*)\b|n't/i;
+    const asked = steps.map((s) => s.question).join(' ');
+    const summary = enquiry.summaryForOwner ?? '';
+    if (DISCOUNT.test(asked)) fails.push(`question mentions a discount: "${asked}"`);
+    if (DISCOUNT.test(summary) && !NEGATED.test(summary)) fails.push(`summary may promise a discount: "${summary}"`);
   }
   const used = repos.enquiries.get(enquiry.id).aiRequestsUsed;
   if (used > 4) fails.push(`${used} requests (max 4)`);
