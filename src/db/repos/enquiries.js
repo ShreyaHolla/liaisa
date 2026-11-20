@@ -13,7 +13,7 @@ export function createEnquiryStore() {
     defaults: {
       customerEmail: null, customerPhone: null, preferredChannel: 'email',
       requirementsJson: null, missingFieldsJson: null, summaryForOwner: null,
-      aiState: null, aiRequestsUsed: 0, source: 'ai',
+      aiState: null, aiRequestsUsed: 0, source: 'ai', doNotContact: false,
     },
   });
   return {

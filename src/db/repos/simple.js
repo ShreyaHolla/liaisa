@@ -18,7 +18,7 @@ export function createFollowupStore() {
 
 export function createEmailStore() {
   const t = createTable({
-    enums: { type: ['estimate', 'followup', 'owner_notice', 'contact'], status: ['accepted', 'failed'] },
+    enums: { type: ['estimate', 'followup', 'owner_notice', 'contact', 'outreach'], status: ['accepted', 'failed'] },
     defaults: { enquiryId: null, providerMessageId: null, error: null },
   });
   return { create: t.insert, all: t.all, listByEnquiry: byEnquiry(t) };
@@ -36,8 +36,27 @@ export function createCustomerResponseStore() {
 
 export function createAiCallStore() {
   const t = createTable({
-    enums: { purpose: ['intake', 'ratecard'] },
+    enums: { purpose: ['intake', 'ratecard', 'outreach'] },
     defaults: { enquiryId: null, cacheReadTokens: 0, cacheWriteTokens: 0, error: null },
   });
   return { create: t.insert, all: t.all, listByEnquiry: byEnquiry(t) };
+}
+
+/** Client Finder leads the owner typed in (M10-lite). One at a time; no imports, no scraping. */
+export function createLeadStore() {
+  const t = createTable({ defaults: { email: null, phone: null, note: '', doNotContact: false } });
+  return { create: t.insert, update: t.update, get: t.get, all: t.all };
+}
+
+/** Client Finder messages: a draft, then sent / opened / failed once the owner approves it. */
+export function createOutreachStore() {
+  const t = createTable({
+    enums: {
+      subjectType: ['customer', 'lead'],
+      channel: ['email', 'whatsapp'],
+      status: ['draft', 'sending', 'sent', 'opened', 'failed'],
+    },
+    defaults: { enquiryId: null, leadId: null, sentAt: null, source: 'ai' },
+  });
+  return { create: t.insert, update: t.update, get: t.get, all: t.all };
 }

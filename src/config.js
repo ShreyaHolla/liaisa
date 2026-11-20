@@ -16,6 +16,8 @@ const schema = z
     AI_MODE: withDefault(z.enum(['mock', 'live']), 'mock'),
     AI_ENABLED: bool('true'),
     AI_MODEL_INTAKE: withDefault(z.string(), 'claude-haiku-5-5'),
+    AI_MODEL_OUTREACH: withDefault(z.string(), 'claude-haiku-5-5'),
+    CLIENT_DRAFT_DAILY_CAP: withDefault(z.coerce.number().int().min(0), 20),
     AI_DAILY_REQUEST_CAP: withDefault(z.coerce.number().int().min(0), 200),
     AI_PRICE_INPUT_PER_MTOK: withDefault(z.coerce.number().min(0), 0),
     AI_PRICE_OUTPUT_PER_MTOK: withDefault(z.coerce.number().min(0), 0),
@@ -95,6 +97,7 @@ export function loadConfig(env = process.env) {
     anthropicApiKey: e.ANTHROPIC_API_KEY,
     ai: {
       modelIntake: e.AI_MODEL_INTAKE,
+      modelOutreach: e.AI_MODEL_OUTREACH,
       dailyCap: e.AI_DAILY_REQUEST_CAP,
       prices: {
         input: e.AI_PRICE_INPUT_PER_MTOK,
@@ -103,6 +106,7 @@ export function loadConfig(env = process.env) {
         cacheWrite: e.AI_PRICE_CACHE_WRITE_PER_MTOK,
       },
     },
+    clientDraftDailyCap: e.CLIENT_DRAFT_DAILY_CAP,
     whatsappCountryCode: e.WHATSAPP_DEFAULT_COUNTRY_CODE,
     mailEnabled: e.MAIL_ENABLED,
     ownerEmail: e.OWNER_EMAIL,

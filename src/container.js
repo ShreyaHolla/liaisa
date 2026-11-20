@@ -5,7 +5,7 @@ import { createBusinessSettingsStore } from './db/repos/businessSettings.js';
 import { createPricingConfigStore } from './db/repos/pricingConfigs.js';
 import {
   createFollowupStore, createEmailStore, createWhatsappShareStore,
-  createCustomerResponseStore, createAiCallStore,
+  createCustomerResponseStore, createAiCallStore, createLeadStore, createOutreachStore,
 } from './db/repos/simple.js';
 import { createMockClient } from './ai/mockClient.js';
 import { createClaudeClient } from './ai/claudeClient.js';
@@ -24,6 +24,8 @@ export function createRepos() {
     whatsappShares: createWhatsappShareStore(),
     customerResponses: createCustomerResponseStore(),
     aiCalls: createAiCallStore(),
+    leads: createLeadStore(),
+    outreach: createOutreachStore(),
   };
 }
 
@@ -35,7 +37,7 @@ export function buildDeps(config) {
     contacts: createContactMessageStore(),
     repos,
     ai: config.aiMode === 'live'
-      ? createClaudeClient({ apiKey: config.anthropicApiKey, models: { intake: config.ai.modelIntake } })
+      ? createClaudeClient({ apiKey: config.anthropicApiKey, models: { intake: config.ai.modelIntake, outreach: config.ai.modelOutreach } })
       : createMockClient(),
     mailer: config.mailEnabled ? createSmtpMailer(config.smtp) : null,
   };
