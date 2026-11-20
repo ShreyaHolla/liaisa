@@ -13,6 +13,7 @@
     "build": "echo build",
     "start": "node src/server.js",
     "test": "node scripts/test.js",
+    "test:pricing": "node --test --experimental-test-coverage --test-coverage-include=src/services/pricing/*.js --test-coverage-branches=100 tests/unit/pricing.test.js",
     "package": "node scripts/package.js"
   },
   "dependencies": {
