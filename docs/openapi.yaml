@@ -643,7 +643,7 @@ paths:
     post:
       tags: [owner]
       summary: Mark one message as read. Redirects (303) to /owner/messages
-      security: [{ cookieAuth: [] }, { csrf: [] }]
+      security: [{ cookieAuth: [] }, { csrfToken: [] }]
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer } }
       responses:
@@ -655,7 +655,7 @@ paths:
     post:
       tags: [owner]
       summary: Mark every message as read. Redirects (303) to /owner/messages
-      security: [{ cookieAuth: [] }, { csrf: [] }]
+      security: [{ cookieAuth: [] }, { csrfToken: [] }]
       responses:
         '303': { description: Redirect to /owner/messages }
         '403': { description: Missing or wrong CSRF token }
