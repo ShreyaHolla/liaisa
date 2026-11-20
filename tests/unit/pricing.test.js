@@ -251,3 +251,31 @@ test('discount must be a positive whole number with a reason', () => {
     assert.throws(() => calculateEstimate(config, WEEKEND_WHITEFIELD, { discount: bad }), ValidationError);
   }
 });
+
+// Flat-fee areas (M7b): `areas: { Name: { fee } }` instead of a distance in km.
+const flat = { ...config, travel: { areas: { Koramangala: { fee: 0 }, Whitefield: { fee: 700 }, Indiranagar: 8 }, bands: config.travel.bands } };
+const WEEKDAY = { service_id: 'veg_buffet', quantity: 40, event_date: '2026-12-15' };
+
+test('flat-fee area: the fee is the travel line, with no band lookup', () => {
+  const e = calculateEstimate(flat, { ...WEEKDAY, location: 'Whitefield' });
+  assert.equal(amount(e, 'travel'), 700);
+  assert.deepEqual(e.warnings, []);
+  assert.equal(e.total, 19635); // (18000 + 700) * 1.05
+});
+
+test('flat-fee area with fee 0 adds no travel line; km-style areas still use bands in the same config', () => {
+  assert.equal(amount(calculateEstimate(flat, { ...WEEKDAY, location: 'Koramangala' }), 'travel'), undefined);
+  const km = calculateEstimate(flat, { ...WEEKDAY, location: 'Indiranagar' });
+  assert.equal(amount(km, 'travel'), undefined);
+  assert.deepEqual(km.warnings, []);
+});
+
+test('an explicit distance_km beats a flat-fee area', () => {
+  const e = calculateEstimate(flat, { ...WEEKDAY, location: 'Whitefield', distance_km: 18 });
+  assert.equal(amount(e, 'travel'), 1500);
+});
+
+test('an unlisted area still warns when the others are flat-fee', () => {
+  const e = calculateEstimate(flat, { ...WEEKDAY, location: 'Mysore' });
+  assert.deepEqual(e.warnings, ['unknown_location']);
+});

@@ -42,6 +42,16 @@ function unitQuantity(item, quantity) {
   return item.unit === 'flat' ? 1 : quantity;
 }
 
+/**
+ * Flat travel fee (whole rupees) when the named area is configured as `{ fee }`, else null.
+ * An explicit distance_km always wins, so the area is ignored then.
+ */
+function flatFeeFor(config, req) {
+  if (req.distance_km !== undefined || !Object.hasOwn(config.travel.areas, req.location)) return null;
+  const area = config.travel.areas[req.location];
+  return typeof area === 'object' && area !== null ? area.fee : null;
+}
+
 /** Travel distance in km from `distance_km` or the named area, else null. */
 function distanceFor(config, req) {
   if (req.distance_km !== undefined) return req.distance_km;
@@ -104,9 +114,12 @@ export function calculateEstimate(config, req, options = {}) {
     lines.push({ kind: 'weekend', label: `Weekend surcharge (${pct}%)`, paise: percentOf(base, pct) });
   }
 
-  // 4. Travel fee from the distance band
-  const km = distanceFor(config, req);
-  if (km === null) {
+  // 4. Travel fee: a flat fee for the area, else from the distance band
+  const flatFee = flatFeeFor(config, req);
+  const km = flatFee === null ? distanceFor(config, req) : null;
+  if (flatFee !== null) {
+    if (flatFee > 0) lines.push({ kind: 'travel', label: 'Travel fee', paise: toPaise(flatFee) });
+  } else if (km === null) {
     warnings.push('unknown_location');
   } else {
     const band = config.travel.bands.find((b) => km <= b.max_km);
