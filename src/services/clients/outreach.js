@@ -6,6 +6,7 @@ import { sendLogged } from '../quotes/mail.js';
 import { todayIST } from '../agent/runTurn.js';
 import { reconnectRows, leadRows, blockOf, identityOf } from './people.js';
 import { factsFor, generateDraft } from './draft.js';
+import { limitsOf } from '../tenants/limits.js';
 
 const clock = (deps) => (deps.now ?? (() => new Date()))();
 const conflict = (code, message) => Object.assign(new ConflictError(message), { code });
@@ -53,7 +54,7 @@ export async function createDraft(deps, { type, ref }) {
   const open = repos.outreach.all().find((o) => o.key === who.key && o.status === 'draft');
   if (open) return open; // an unsent draft already exists: no new AI call, no new slot
 
-  const cap = config.clientDraftDailyCap;
+  const cap = limitsOf(repos, config).drafts;
   if (draftsToday(repos, now) >= cap) throw conflict('draft_limit', `You’ve reached today’s limit of ${cap} drafts. Try again tomorrow.`);
 
   const row = repos.outreach.create({

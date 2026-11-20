@@ -1,43 +1,21 @@
 import { createContactMessageStore } from './db/repos/contactMessages.js';
-import { createEnquiryStore } from './db/repos/enquiries.js';
-import { createEstimateStore } from './db/repos/estimates.js';
-import { createBusinessSettingsStore } from './db/repos/businessSettings.js';
-import { createPricingConfigStore } from './db/repos/pricingConfigs.js';
-import {
-  createFollowupStore, createEmailStore, createWhatsappShareStore,
-  createCustomerResponseStore, createAiCallStore, createLeadStore, createOutreachStore, createDiscoveryRunStore, createActivityStore, createUsedLinkStore,
-} from './db/repos/simple.js';
+import { createRegistry } from './db/registry.js';
 import { createMockClient } from './ai/mockClient.js';
 import { createClaudeClient } from './ai/claudeClient.js';
 import { createSmtpMailer } from './mail/smtpTransport.js';
-import { seed } from './seed.js';
 
-/** All in-memory repos, empty. Data resets on restart until MySQL repos replace these. */
-export function createRepos() {
-  return {
-    businessSettings: createBusinessSettingsStore(),
-    pricingConfigs: createPricingConfigStore(),
-    enquiries: createEnquiryStore(),
-    estimates: createEstimateStore(),
-    followups: createFollowupStore(),
-    emails: createEmailStore(),
-    whatsappShares: createWhatsappShareStore(),
-    customerResponses: createCustomerResponseStore(),
-    aiCalls: createAiCallStore(),
-    leads: createLeadStore(),
-    outreach: createOutreachStore(),
-    discoveryRuns: createDiscoveryRunStore(),
-    activity: createActivityStore(),
-    usedLinks: createUsedLinkStore(),
-  };
-}
+export { createRepos } from './db/repos/index.js';
 
-/** Wires adapters by env. mailer is null when MAIL_ENABLED=false. Repos are seeded with demo data. */
+/**
+ * Wires adapters by env. mailer is null when MAIL_ENABLED=false. The registry starts with the demo business
+ * (seeded) and its owner; `repos` is the demo business's repo set (handy for tests and boot logging).
+ */
 export function buildDeps(config) {
-  const repos = createRepos();
-  seed(repos);
+  const registry = createRegistry({ maxBusinesses: config.maxBusinesses });
+  const repos = registry.addDemo(config);
   return {
     contacts: createContactMessageStore(),
+    registry,
     repos,
     ai: config.aiMode === 'live'
       ? createClaudeClient({ apiKey: config.anthropicApiKey, models: { intake: config.ai.modelIntake, outreach: config.ai.modelOutreach, discovery: config.ai.modelDiscovery } })

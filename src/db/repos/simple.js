@@ -4,8 +4,8 @@ import { createTable } from './table.js';
 
 const byEnquiry = (t) => (enquiryId) => t.find((r) => r.enquiryId === enquiryId);
 
-export function createFollowupStore() {
-  const t = createTable({
+export function createFollowupStore(scope) {
+  const t = createTable({ name: 'followups', scope,
     enums: {
       channel: ['email', 'whatsapp'],
       status: ['pending', 'sending', 'sent', 'awaiting_owner', 'cancelled', 'failed'],
@@ -16,35 +16,35 @@ export function createFollowupStore() {
   return { create: t.insert, update: t.update, get: t.get, all: t.all, listByEnquiry: byEnquiry(t) };
 }
 
-export function createEmailStore() {
-  const t = createTable({
+export function createEmailStore(scope) {
+  const t = createTable({ name: 'emails', scope,
     enums: { type: ['estimate', 'followup', 'owner_notice', 'contact', 'outreach'], status: ['accepted', 'failed'] },
     defaults: { enquiryId: null, providerMessageId: null, error: null },
   });
   return { create: t.insert, all: t.all, listByEnquiry: byEnquiry(t) };
 }
 
-export function createWhatsappShareStore() {
-  const t = createTable({ enums: { type: ['estimate', 'followup'] }, defaults: { followupId: null } });
+export function createWhatsappShareStore(scope) {
+  const t = createTable({ name: 'whatsappShares', scope, enums: { type: ['estimate', 'followup'] }, defaults: { followupId: null } });
   return { create: t.insert, all: t.all, listByEnquiry: byEnquiry(t) };
 }
 
-export function createCustomerResponseStore() {
-  const t = createTable({ enums: { type: ['accept', 'question', 'decline'] }, defaults: { message: null } });
+export function createCustomerResponseStore(scope) {
+  const t = createTable({ name: 'customerResponses', scope, enums: { type: ['accept', 'question', 'decline'] }, defaults: { message: null } });
   return { create: t.insert, all: t.all, listByEnquiry: byEnquiry(t) };
 }
 
-export function createAiCallStore() {
-  const t = createTable({
+export function createAiCallStore(scope) {
+  const t = createTable({ name: 'aiCalls', scope,
     enums: { purpose: ['intake', 'ratecard', 'outreach', 'discovery'] },
     defaults: { enquiryId: null, cacheReadTokens: 0, cacheWriteTokens: 0, error: null, webSearchRequests: 0, searchCostUsd: 0 },
   });
-  return { create: t.insert, all: t.all, listByEnquiry: byEnquiry(t) };
+  return { create: t.insert, all: t.all, listByEnquiry: byEnquiry(t), countSince: (from) => t.count((r) => r.createdAt >= from) };
 }
 
 /** Client Finder leads the owner typed in (M10-lite). One at a time; no imports, no scraping. */
-export function createLeadStore() {
-  const t = createTable({
+export function createLeadStore(scope) {
+  const t = createTable({ name: 'leads', scope,
     enums: { status: ['new', 'drafted', 'sent', 'replied', 'not_interested'], kind: ['manual', 'discovered'] },
     defaults: { email: null, phone: null, note: '', doNotContact: false, status: 'new', kind: 'manual', notes: '', sourceUrl: null, sourceDomain: null, orgType: null, whyFit: null, publicContact: null },
   });
@@ -52,8 +52,8 @@ export function createLeadStore() {
 }
 
 /** Client Finder messages: a draft, then sent / opened / failed once the owner approves it. */
-export function createOutreachStore() {
-  const t = createTable({
+export function createOutreachStore(scope) {
+  const t = createTable({ name: 'outreach', scope,
     enums: {
       subjectType: ['customer', 'lead'],
       channel: ['email', 'whatsapp'],
@@ -65,14 +65,14 @@ export function createOutreachStore() {
 }
 
 /** One "Find clients" run per service+area: powers the 6-hour cache and the daily run cap. */
-export function createDiscoveryRunStore() {
-  const t = createTable({ defaults: { leadIds: [], searches: 0 } });
+export function createDiscoveryRunStore(scope) {
+  const t = createTable({ name: 'discoveryRuns', scope, defaults: { leadIds: [], searches: 0 } });
   return { create: t.insert, update: t.update, get: t.get, all: t.all };
 }
 
 /** Things that happened on an enquiry that no other table records (one-tap links, bulk and automatic approval, decline reasons). */
-export function createActivityStore() {
-  const t = createTable({});
+export function createActivityStore(scope) {
+  const t = createTable({ name: 'activity', scope });
   return { create: t.insert, all: t.all, listByEnquiry: byEnquiry(t) };
 }
 

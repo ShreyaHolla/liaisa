@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import { z } from 'zod';
 import { ConflictError } from '../../errors.js';
 import { computeCostUsd } from '../../ai/cost.js';
-import { dailyCallCount } from '../agent/guards.js';
+import { aiBudgetBlock, limitsOf } from '../tenants/limits.js';
 import { todayIST } from '../agent/runTurn.js';
 import { normalisePhone } from '../enquiries/schema.js';
 import { sanitizeDraft } from './draft.js';
@@ -221,9 +221,11 @@ export async function discoverClients(deps, { service = null, area = null } = {}
     return { leads, dropped: {}, cached: true, searches: 0 };
   }
   if (!config.aiEnabled || !ai) throw conflict('ai_off', 'Finding clients needs AI, which is switched off.');
-  const cap = config.clientDiscoveryDailyCap;
+  const cap = limitsOf(repos, config).discoveryRuns;
   if (runsToday(repos, now) >= cap) throw conflict('discovery_limit', `You’ve reached today’s limit of ${cap} searches for clients. Try again tomorrow.`);
-  if (dailyCallCount(repos, now) >= config.ai.dailyCap) throw conflict('ai_cap', 'The daily AI limit has been reached. Try again tomorrow.');
+  const block = aiBudgetBlock(repos, config, now);
+  if (block === 'global_cap') throw conflict('ai_cap', 'AI is resting for today across Liaisa. Try again tomorrow.');
+  if (block) throw conflict('ai_cap', 'The daily AI limit has been reached. Try again tomorrow.');
 
   const facts = businessFacts(repos, { service, area });
   const sys = [{ type: 'text', text: system.replaceAll('{{business_name}}', business.businessName), cache_control: { type: 'ephemeral' } }];

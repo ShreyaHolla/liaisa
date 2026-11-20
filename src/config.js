@@ -39,6 +39,12 @@ const schema = z
     AI_PRICE_WEB_SEARCH: withDefault(z.coerce.number().min(0), 0.01),
     CLIENT_DRAFT_DAILY_CAP: withDefault(z.coerce.number().int().min(0), 20),
     AI_DAILY_REQUEST_CAP: withDefault(z.coerce.number().int().min(0), 200),
+    // Across ALL businesses: one switch for the whole platform's AI spend. New businesses get lower caps than the demo.
+    AI_GLOBAL_DAILY_CAP: withDefault(z.coerce.number().int().min(0), 300),
+    NEW_BUSINESS_AI_DAILY_CAP: withDefault(z.coerce.number().int().min(0), 40),
+    NEW_BUSINESS_DRAFT_DAILY_CAP: withDefault(z.coerce.number().int().min(0), 5),
+    NEW_BUSINESS_DISCOVERY_DAILY_CAP: withDefault(z.coerce.number().int().min(0), 3),
+    MAX_BUSINESSES: withDefault(z.coerce.number().int().min(1), 50),
     AI_PRICE_INPUT_PER_MTOK: withDefault(z.coerce.number().min(0), 0),
     AI_PRICE_OUTPUT_PER_MTOK: withDefault(z.coerce.number().min(0), 0),
     AI_PRICE_CACHE_READ_PER_MTOK: withDefault(z.coerce.number().min(0), 0),
@@ -131,6 +137,7 @@ export function loadConfig(env = process.env) {
       modelDiscovery: e.AI_MODEL_DISCOVERY,
       webSearchPrice: e.AI_PRICE_WEB_SEARCH, // USD per search
       dailyCap: e.AI_DAILY_REQUEST_CAP,
+      globalDailyCap: e.AI_GLOBAL_DAILY_CAP,
       prices: {
         input: e.AI_PRICE_INPUT_PER_MTOK,
         output: e.AI_PRICE_OUTPUT_PER_MTOK,
@@ -138,6 +145,8 @@ export function loadConfig(env = process.env) {
         cacheWrite: e.AI_PRICE_CACHE_WRITE_PER_MTOK,
       },
     },
+    newBusiness: { aiRequests: e.NEW_BUSINESS_AI_DAILY_CAP, drafts: e.NEW_BUSINESS_DRAFT_DAILY_CAP, discoveryRuns: e.NEW_BUSINESS_DISCOVERY_DAILY_CAP },
+    maxBusinesses: e.MAX_BUSINESSES,
     clientDraftDailyCap: e.CLIENT_DRAFT_DAILY_CAP,
     clientDiscoveryDailyCap: e.CLIENT_DISCOVERY_DAILY_CAP,
     whatsappCountryCode: e.WHATSAPP_DEFAULT_COUNTRY_CODE,

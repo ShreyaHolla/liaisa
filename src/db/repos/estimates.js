@@ -3,8 +3,8 @@ import { createTable } from './table.js';
 
 export const ESTIMATE_STATUSES = ['draft', 'approved', 'sent', 'approved_send_failed', 'superseded'];
 
-export function createEstimateStore() {
-  const t = createTable({
+export function createEstimateStore(scope) {
+  const t = createTable({ name: 'estimates', scope,
     enums: { status: ESTIMATE_STATUSES },
     unique: [['enquiryId', 'version']],
     defaults: { warningsJson: [], revisionReason: null, approvedAt: null, quoteToken: null, validUntil: null },

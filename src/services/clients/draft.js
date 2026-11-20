@@ -3,7 +3,7 @@
 // and validated before the owner sees it; if it keeps failing, the standard template is used.
 import fs from 'node:fs';
 import { computeCostUsd } from '../../ai/cost.js';
-import { dailyCallCount } from '../agent/guards.js';
+import { aiBudgetBlock } from '../tenants/limits.js';
 import { formatDate } from '../../util/formatDate.js';
 import { templateDraft } from './template.js';
 
@@ -95,7 +95,7 @@ export async function generateDraft(deps, facts) {
   const { repos, config, ai } = deps;
   const now = deps.now ?? (() => new Date());
   const fallback = (attempts, stripped) => ({ text: templateDraft(facts), source: 'template', attempts, stripped });
-  if (!config.aiEnabled || !ai || dailyCallCount(repos, now()) >= config.ai.dailyCap) return fallback(0, []);
+  if (!config.aiEnabled || !ai || aiBudgetBlock(repos, config, now())) return fallback(0, []);
 
   const businessName = facts.business_name;
   const sys = [{ type: 'text', text: system.replaceAll('{{business_name}}', businessName), cache_control: { type: 'ephemeral' } }];

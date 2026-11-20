@@ -8,6 +8,7 @@ import { createDraft, sendDraft, markDoNotContact, addLead, activityLog, draftsT
 import { discoverClients, searchesToday, runsToday, CACHE_HOURS } from '../services/clients/discovery.js';
 import { makeLeadSchema, subjectSchema, sendSchema } from '../services/clients/schema.js';
 import { flatErrors } from '../services/quotes/schema.js';
+import { limitsOf } from '../services/tenants/limits.js';
 import { formatDate } from '../util/formatDate.js';
 import { timeAgo } from '../util/format.js';
 
@@ -70,8 +71,8 @@ export function ownerClientRoutes({ repos, config, ai, mailer }) {
       leads: tab === 'leads' ? leadRows(deps(), now).filter((l) => l.kind !== 'discovered') : [],
       found: tab === 'find' ? leadRows(deps(), now).filter((l) => l.kind === 'discovered') : [],
       focus: { services: repos.pricingConfigs.latestApproved().configJson.services.map((s) => s.name), areas: Object.keys(repos.pricingConfigs.latestApproved().configJson.travel.areas) },
-      searchesToday: searchesToday(repos, now), runsToday: runsToday(repos, now), discoveryCap: config.clientDiscoveryDailyCap,
-      activity: activityLog(deps()), draftsToday: draftsToday(repos, now), cap: config.clientDraftDailyCap,
+      searchesToday: searchesToday(repos, now), runsToday: runsToday(repos, now), discoveryCap: limitsOf(repos, config).discoveryRuns,
+      activity: activityLog(deps()), draftsToday: draftsToday(repos, now), cap: limitsOf(repos, config).drafts,
       formatDate, timeAgo, now, errors: {}, values: {}, active: 'clients', ...over,
     });
   }

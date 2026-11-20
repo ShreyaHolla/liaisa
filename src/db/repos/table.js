@@ -7,10 +7,17 @@
  * @param {Record<string,string[]>} [opts.enums]  column -> allowed values (checked on insert/update)
  * @param {string[][]} [opts.unique]              column groups that must be unique together
  * @param {object} [opts.defaults]                default column values
+ * @param {string} [opts.name]                    table name, used to find the shared id counter
+ * @param {{businessId?: number, seq?: (name: string) => {next: () => number}}} [opts.scope]
+ *        the business every row belongs to (stamped as `businessId`), and shared id counters so ids are
+ *        unique across businesses (an id from another business is simply "not found")
  */
-export function createTable({ enums = {}, unique = [], defaults = {} } = {}) {
+export function createTable({ enums = {}, unique = [], defaults = {}, name, scope = {} } = {}) {
   const rows = [];
-  let nextId = 1;
+  let localId = 1;
+  const shared = name && scope.seq ? scope.seq(name) : null;
+  const takeId = () => (shared ? shared.next() : localId++);
+  const stamp = scope.businessId === undefined ? {} : { businessId: scope.businessId };
 
   const checkEnums = (data) => {
     for (const [col, allowed] of Object.entries(enums)) {
@@ -26,10 +33,10 @@ export function createTable({ enums = {}, unique = [], defaults = {} } = {}) {
 
   return {
     insert(data, now = new Date()) {
-      const row = { ...defaults, ...data, id: nextId, createdAt: now };
+      const row = { ...defaults, ...data, ...stamp, id: 0, createdAt: now };
       checkEnums(row);
+      row.id = takeId();
       checkUnique(row);
-      nextId += 1;
       rows.push(row);
       return structuredClone(row);
     },
@@ -45,5 +52,7 @@ export function createTable({ enums = {}, unique = [], defaults = {} } = {}) {
     get: (id) => structuredClone(rows.find((r) => r.id === id) ?? null),
     find: (fn) => structuredClone(rows.filter(fn)),
     all: () => structuredClone(rows),
+    /** Count without copying rows (daily caps are checked on every AI call). */
+    count: (fn) => rows.filter(fn).length,
   };
 }

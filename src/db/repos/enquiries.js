@@ -7,8 +7,8 @@ export const ENQUIRY_STATUSES = [
   'won', 'lost', 'declined', 'needs_owner', 'out_of_scope',
 ];
 
-export function createEnquiryStore() {
-  const t = createTable({
+export function createEnquiryStore(scope) {
+  const t = createTable({ name: 'enquiries', scope,
     enums: { status: ENQUIRY_STATUSES, preferredChannel: ['email', 'whatsapp'], source: ['ai', 'form'] },
     defaults: {
       customerEmail: null, customerPhone: null, preferredChannel: 'email',

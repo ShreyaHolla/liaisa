@@ -1,8 +1,8 @@
 // In-memory `pricing_configs` (PRD §7.2). Data resets on restart; MySQL replaces this later.
 import { createTable } from './table.js';
 
-export function createPricingConfigStore() {
-  const t = createTable({
+export function createPricingConfigStore(scope) {
+  const t = createTable({ name: 'pricingConfigs', scope,
     enums: { status: ['draft', 'approved', 'superseded'] },
     defaults: { sourceText: null, approvedAt: null },
   });
