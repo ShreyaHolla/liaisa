@@ -9,7 +9,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "node --watch src/server.js",
+    "dev": "node --env-file=.env --watch src/server.js",
     "build": "echo build",
     "start": "node src/server.js",
     "test": "node scripts/test.js",
