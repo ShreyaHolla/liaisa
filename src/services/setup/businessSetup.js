@@ -20,6 +20,7 @@ export function currentSetup(repos) {
   return {
     businessName: business.businessName, tagline: business.tagline ?? '',
     currencySymbol: business.currencySymbol ?? '₹', whatsappNumber: business.whatsappNumber ?? '',
+    followupAfterDays: business.followupAfterDays ?? 2,
     weekendPct: config.surcharges.weekend_pct, taxPct: config.tax_pct,
     services: config.services.map((s) => ({
       id: s.id, name: s.name, price: s.price, minQty: s.min_qty, maxQty: s.max_qty ?? '', unitLabel: unitLabel(s),
@@ -56,6 +57,7 @@ export function saveSetup(repos, input, countryCode, now = new Date()) {
   repos.businessSettings.save({
     businessName: input.businessName, tagline: input.tagline ?? null, currencySymbol: input.currencySymbol,
     whatsappNumber: input.whatsappNumber ? normalisePhone(input.whatsappNumber, countryCode) : null,
+    followupAfterDays: input.followupAfterDays,
   });
 }
 

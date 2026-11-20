@@ -31,6 +31,7 @@ export const DEMO_BUSINESS = {
   tagline: 'Home-style catering for Bengaluru celebrations',
   currencySymbol: '₹',
   whatsappNumber: null,
+  followupAfterDays: 2,
 };
 
 const HOUR = 3600 * 1000;
@@ -131,8 +132,9 @@ export function seed(repos, { now = new Date() } = {}) {
       );
     }
 
+    let est = null;
     if (s.estimate) {
-      const est = createEstimate(repos, e.id, { now: at(s.hoursAgo) });
+      est = createEstimate(repos, e.id, { now: at(s.hoursAgo) });
       if (s.estimate === 'sent') {
         repos.estimates.update(est.id, {
           status: 'sent',
@@ -151,7 +153,7 @@ export function seed(repos, { now = new Date() } = {}) {
     }
     if (s.followup) {
       repos.followups.create(
-        { enquiryId: e.id, step: 1, dueAt: at(s.emailAgo - 48), channel: s.channel, status: 'sent', sentAt: at(s.emailAgo - 48) },
+        { enquiryId: e.id, step: 1, dueAt: at(s.emailAgo - 48), channel: s.channel, status: 'sent', sentAt: at(s.emailAgo - 48), estimateId: est.id },
         at(s.emailAgo),
       );
     }
