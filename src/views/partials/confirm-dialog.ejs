@@ -1,9 +1,9 @@
 <dialog id="confirm-dialog" aria-labelledby="confirm-text">
   <form method="dialog">
-    <p id="confirm-text"></p>
-    <div class="actions">
-      <button class="btn" id="confirm-ok" value="ok">Confirm</button>
-      <button class="btn secondary" value="cancel">Cancel</button>
+    <p id="confirm-text" class="dialog-title"></p>
+    <div class="dialog-actions">
+      <button class="btn secondary" value="cancel" data-no-busy>Cancel</button>
+      <button class="btn" id="confirm-ok" value="ok" data-no-busy>Confirm</button>
     </div>
   </form>
 </dialog>

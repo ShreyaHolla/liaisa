@@ -254,7 +254,7 @@ test('dashboard: Needs you lists approval and review rows; all enquiries use the
   const o = await login(ctx.app);
   const page = await o.get('/owner');
   assert.equal(page.status, 200);
-  assert.match(page.text, /Needs you \(2\)/);
+  assert.match(page.text, /Waiting for you \(2\)/);
   assert.match(page.text, /Kavita Reddy/);
   assert.match(page.text, /Needs your approval/);
   assert.match(page.text, /Needs your review/);

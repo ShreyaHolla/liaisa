@@ -69,3 +69,15 @@ export function createDiscoveryRunStore() {
   const t = createTable({ defaults: { leadIds: [], searches: 0 } });
   return { create: t.insert, update: t.update, get: t.get, all: t.all };
 }
+
+/** Things that happened on an enquiry that no other table records (one-tap links, bulk and automatic approval, decline reasons). */
+export function createActivityStore() {
+  const t = createTable({});
+  return { create: t.insert, all: t.all, listByEnquiry: byEnquiry(t) };
+}
+
+/** One-tap link ids that were already used (single use). In memory like everything else. */
+export function createUsedLinkStore() {
+  const used = new Map();
+  return { has: (id) => used.has(id), add: (id, at = new Date()) => { used.set(id, at); }, size: () => used.size };
+}

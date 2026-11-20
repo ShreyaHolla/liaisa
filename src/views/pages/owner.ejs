@@ -1,93 +1,158 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><%= businessName %> · Owner</title>
-  <link rel="stylesheet" href="/css/app.css">
-</head>
-<body>
-  <main class="wide" id="dash" data-sig="<%= JSON.stringify(summary.needsYou) %>">
-    <header class="top">
-      <p class="brand"><%= businessName %></p>
-      <nav class="top-nav" aria-label="Owner">
-        <a href="/owner/clients">Client Finder</a>
-        <a href="/owner/setup">Business setup</a>
-        <form method="post" action="/owner/logout">
-          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <button class="btn text" type="submit">Log out</button>
-        </form>
-      </nav>
-    </header>
-    <h1>Hello, <%= businessName %></h1>
-    <% if (notice) { %>
-      <p class="banner tone-<%= notice[0] === 'ok' ? 'done' : 'problem' %>" role="<%= notice[0] === 'ok' ? 'status' : 'alert' %>"><%= notice[1] %></p>
+<%- include('../partials/head', { title: 'Approvals · ' + businessName }) %>
+<%- include('../partials/owner-open', { active: 'approvals', businessName: businessName, csrfToken: csrfToken, pending: pending }) %>
+<div id="dash" data-sig="<%= JSON.stringify(summary.needsYou) %>">
+  <div class="page-head">
+    <h1>Approvals</h1>
+    <p class="slate"><%= approvals.length === 0 ? 'Nothing is waiting for you.' : approvals.length + (approvals.length === 1 ? ' quote is' : ' quotes are') + ' waiting for you.' %></p>
+  </div>
+  <% if (notice) { %>
+    <p class="banner tone-<%= notice[0] === 'ok' ? 'done' : 'problem' %>" role="<%= notice[0] === 'ok' ? 'status' : 'alert' %>"><%= notice[1] %></p>
+  <% } %>
+
+  <% if (approvals.length) { %>
+    <div class="cluster">
+      <div class="briefing" id="briefing" hidden>
+        <button class="btn secondary" type="button" id="briefing-start">Read my approvals</button>
+        <button class="btn secondary" type="button" id="briefing-pause" hidden>Pause</button>
+        <button class="btn text" type="button" id="briefing-stop" hidden>Stop</button>
+      </div>
+      <% if (summary.bulk.limit !== null && summary.bulk.clean.length) { %>
+        <a class="btn" href="/owner/approve-clean">Approve all clean quotes (<%= summary.bulk.clean.length %>)</a>
+      <% } else if (summary.bulk.limit === null) { %>
+        <p class="slate small">Want to approve several at once? <a href="/owner/setup#bulk">Set a limit for clean quotes</a>.</p>
+      <% } %>
+    </div>
+  <% } %>
+
+  <section class="section" aria-labelledby="wait-h">
+    <h2 id="wait-h">Waiting for you (<%= approvals.length %>)</h2>
+    <% if (approvals.length === 0) { %>
+      <div class="empty"><strong>Nothing needs you right now.</strong>New enquiries will appear here. Share your enquiry link: <a href="/enquire"><%= baseUrl.replace(/\/$/, '') %>/enquire</a></div>
+    <% } else { %>
+      <ul class="inbox">
+        <% approvals.forEach(function (n) { %>
+          <li class="card approval" data-approval data-customer="<%= n.customerName %>" data-service="<%= n.service || '' %>" data-qty="<%= n.quantity || '' %>" data-unit="<%= n.unit || '' %>" data-date="<%= spokenDate(n.eventDate) %>" data-total="<%= n.total || 0 %>" data-warnings="<%= JSON.stringify(n.warnings) %>">
+            <div class="approval__top">
+              <div>
+                <h3 class="approval__name"><%= n.customerName %></h3>
+                <p class="approval__meta"><%= [n.service, n.quantity ? n.quantity + ' ' + (n.unit || '') : '', n.eventDate ? formatDate(n.eventDate) : ''].filter(Boolean).join(' · ') %></p>
+              </div>
+              <div class="approval__total"><%= n.total !== undefined ? inr(n.total) : '' %></div>
+            </div>
+            <ul class="chips" aria-label="Checks">
+              <% if (n.kind === 'review') { %><li class="chip tone-needs">Needs your review</li><% } %>
+              <% n.warnings.forEach(function (w) { %><li class="chip tone-needs"><span aria-hidden="true">⚠</span> <%= w %></li><% }) %>
+              <% if (!n.warnings.length) { %><li class="chip tone-done"><span aria-hidden="true">✓</span> No warnings</li><% } %>
+              <li class="chip"><%= n.channel === 'whatsapp' ? 'Reply on WhatsApp' : 'Reply by email' %></li>
+            </ul>
+            <% if (n.version) { %>
+              <div class="approval__actions">
+                <form method="post" action="/owner/enquiries/<%= n.enquiryId %>/approve">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input type="hidden" name="estimateVersion" value="<%= n.version %>">
+                  <button class="btn lg" type="submit"
+                    data-confirm="Send <%= inr(n.total) %> quote to <%= n.customerName.split(' ')[0] %> <%= n.channel === 'whatsapp' ? 'on WhatsApp' : 'by email' %>?"
+                    data-confirm-label="Approve &amp; send">Approve</button>
+                </form>
+                <button class="btn danger lg" type="button" data-sheet="decline-<%= n.enquiryId %>">Decline</button>
+              </div>
+            <% } else { %>
+              <div class="approval__actions">
+                <a class="btn lg" href="/owner/enquiries/<%= n.enquiryId %>">Review</a>
+                <button class="btn danger lg" type="button" data-sheet="decline-<%= n.enquiryId %>">Decline</button>
+              </div>
+            <% } %>
+            <noscript><a class="btn danger" href="/owner/enquiries/<%= n.enquiryId %>">Decline on the next page</a></noscript>
+            <a class="approval__edit" href="/owner/enquiries/<%= n.enquiryId %>"><%= n.version ? 'Edit or see details' : 'See details' %><span class="sr"> for <%= n.customerName %></span></a>
+            <dialog class="sheet-dialog" id="decline-<%= n.enquiryId %>" aria-labelledby="decline-t-<%= n.enquiryId %>">
+              <form method="post" action="/owner/enquiries/<%= n.enquiryId %>/decline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <p class="dialog-title" id="decline-t-<%= n.enquiryId %>">Decline <%= n.customerName %>?</p>
+                <p class="slate small">Nothing is sent to them. You can add a short reason for your own records.</p>
+                <div class="field">
+                  <label for="reason-<%= n.enquiryId %>">Reason (optional)</label>
+                  <textarea id="reason-<%= n.enquiryId %>" name="reason" rows="2" maxlength="200"></textarea>
+                </div>
+                <div class="dialog-actions">
+                  <button class="btn secondary" type="button" data-close data-no-busy>Cancel</button>
+                  <button class="btn danger" type="submit">Decline</button>
+                </div>
+              </form>
+            </dialog>
+          </li>
+        <% }) %>
+      </ul>
     <% } %>
+  </section>
 
-    <section class="section" aria-labelledby="needs-h">
-      <h2 id="needs-h">Needs you (<%= summary.needsYou.length %>)</h2>
-      <div class="panel">
-        <% if (summary.needsYou.length === 0) { %>
-          <p class="slate">Nothing needs you right now. New enquiries will appear here.</p>
-        <% } else { %>
-          <ul class="rows">
-            <% summary.needsYou.forEach(function (n) { %>
-              <li>
-                <span class="grow"><strong><%= n.customerName %></strong>
-                  <% if (n.what) { %><span class="what"> · <%= n.what %></span><% } %></span>
-                <span class="badge <%= n.kind === 'send_failed' ? 'tone-problem' : 'tone-needs' %>"><%= n.label %></span>
-                <% if (n.total !== undefined) { %><span><%= inr(n.total) %></span><% } %>
-                <a class="btn secondary" href="/owner/enquiries/<%= n.enquiryId %>"><%= n.kind === 'customer_question' ? 'Reply' : n.kind === 'send_failed' ? 'Retry sending' : 'Review' %><span class="sr"> for <%= n.customerName %></span></a>
-              </li>
-            <% }) %>
-          </ul>
-        <% } %>
-      </div>
+  <% if (attention.length) { %>
+    <section class="section" aria-labelledby="look-h">
+      <h2 id="look-h">Needs a look (<%= attention.length %>)</h2>
+      <ul class="compact">
+        <% attention.forEach(function (n) { %>
+          <li>
+            <span class="grow"><a class="row-link" href="/owner/enquiries/<%= n.enquiryId %>"><%= n.customerName %></a>
+              <% if (n.what) { %><span class="what"> · <%= n.what %></span><% } %></span>
+            <span class="chip <%= n.kind === 'send_failed' ? 'tone-problem' : 'tone-needs' %>"><%= n.label %></span>
+            <a class="btn secondary" href="/owner/enquiries/<%= n.enquiryId %>"><%= n.kind === 'customer_question' ? 'Reply' : 'Retry sending' %><span class="sr"> for <%= n.customerName %></span></a>
+          </li>
+        <% }) %>
+      </ul>
     </section>
+  <% } %>
 
-    <p class="slate small">This week: <%= summary.week.enquiries %> enquiries · <%= summary.week.quotesSent %> quotes sent · <%= summary.week.accepted %> accepted</p>
+  <div class="stats" aria-label="This week">
+    <div class="stat"><strong><%= summary.week.enquiries %></strong><span>Enquiries this week</span></div>
+    <div class="stat"><strong><%= summary.week.quotesSent %></strong><span>Quotes sent</span></div>
+    <div class="stat"><strong><%= summary.week.accepted %></strong><span>Accepted</span></div>
+    <div class="stat"><strong><%= summary.followUps.length %></strong><span>Follow-ups due</span></div>
+  </div>
 
-    <section class="section" aria-labelledby="fu-h">
-      <h2 id="fu-h">Follow-up due (<%= summary.followUps.length %>)</h2>
-      <div class="panel">
-        <% if (summary.followUps.length === 0) { %>
-          <p class="slate">No sent quotes are waiting for a reminder.</p>
-        <% } else { %>
-          <ul class="rows">
-            <% summary.followUps.forEach(function (f) { %>
-              <li>
-                <span class="grow"><strong><%= f.customerName %></strong>
-                  <% if (f.what) { %><span class="what"> · <%= f.what %></span><% } %></span>
-                <span class="slate small"><%= f.quoteAge %> · <%= f.remindersSent %> of 2 reminders sent</span>
-                <a class="btn secondary" href="/owner/enquiries/<%= f.enquiryId %>">Follow up<span class="sr"> with <%= f.customerName %></span></a>
-              </li>
-            <% }) %>
-          </ul>
-        <% } %>
-      </div>
-    </section>
+  <section class="section" aria-labelledby="fu-h">
+    <h2 id="fu-h">Follow-up due (<%= summary.followUps.length %>)</h2>
+    <% if (summary.followUps.length === 0) { %>
+      <div class="empty">No sent quotes are waiting for a reminder.</div>
+    <% } else { %>
+      <ul class="compact">
+        <% summary.followUps.forEach(function (f) { %>
+          <li>
+            <span class="grow"><strong><%= f.customerName %></strong>
+              <% if (f.what) { %><span class="what"> · <%= f.what %></span><% } %></span>
+            <span class="slate small"><%= f.quoteAge %> · <%= f.remindersSent %> of 2 reminders sent</span>
+            <a class="btn secondary" href="/owner/enquiries/<%= f.enquiryId %>">Follow up<span class="sr"> with <%= f.customerName %></span></a>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </section>
 
-    <section class="section" aria-labelledby="all-h">
-      <h2 id="all-h">All enquiries</h2>
-      <% if (summary.all.length === 0) { %>
-        <p class="slate">No enquiries yet. Share your enquiry link: <a href="/enquire"><%= baseUrl.replace(/\/$/, '') %>/enquire</a></p>
-      <% } else { %>
-        <table class="list">
-          <thead><tr><th scope="col">Name</th><th scope="col">What</th><th scope="col">Status</th><th scope="col">Updated</th></tr></thead>
-          <tbody>
-            <% summary.all.forEach(function (e) { %>
-              <tr>
-                <td><a href="/owner/enquiries/<%= e.id %>"><%= e.name %></a></td>
-                <td><%= e.what %></td>
-                <td><span class="badge tone-<%= e.tone %>"><%= e.label %></span></td>
-                <td><%= e.updated %></td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
+  <% var sentRows = summary.all.filter(function (e) { return ['quoted', 'followed_up'].includes(e.status); }); var wonRows = summary.all.filter(function (e) { return e.status === 'won'; }); %>
+  <% [['Sent quotes', sentRows, 'No quotes sent yet.'], ['Accepted', wonRows, 'No accepted quotes yet.']].forEach(function (g) { %>
+    <section class="section" aria-label="<%= g[0] %>">
+      <h2><%= g[0] %> (<%= g[1].length %>)</h2>
+      <% if (g[1].length === 0) { %><div class="empty"><%= g[2] %></div><% } else { %>
+        <ul class="compact">
+          <% g[1].slice(0, 5).forEach(function (e) { %>
+            <li><span class="grow"><a class="row-link" href="/owner/enquiries/<%= e.id %>"><%= e.name %></a><% if (e.what) { %><span class="what"> · <%= e.what %></span><% } %></span>
+              <span class="chip tone-<%= e.tone %>"><%= e.label %></span><span class="slate small"><%= e.updated %></span></li>
+          <% }) %>
+        </ul>
       <% } %>
     </section>
-  </main>
-  <script src="/js/owner.js" defer></script>
-</body>
-</html>
+  <% }) %>
+
+  <section class="section" aria-labelledby="all-h">
+    <h2 id="all-h">All enquiries</h2>
+    <% if (summary.all.length === 0) { %>
+      <div class="empty"><strong>No enquiries yet.</strong>Share your enquiry link: <a href="/enquire"><%= baseUrl.replace(/\/$/, '') %>/enquire</a></div>
+    <% } else { %>
+      <ul class="compact">
+        <% summary.all.forEach(function (e) { %>
+          <li><span class="grow"><a class="row-link" href="/owner/enquiries/<%= e.id %>"><%= e.name %></a><% if (e.what) { %><span class="what"> · <%= e.what %></span><% } %></span>
+            <span class="chip tone-<%= e.tone %>"><%= e.label %></span><span class="slate small"><%= e.updated %></span></li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </section>
+</div>
+<%- include('../partials/owner-close', { scripts: ['/js/briefing.js'] }) %>

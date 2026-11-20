@@ -31,7 +31,7 @@ test('the setup page shows the current business, services and areas; the dashboa
   assert.equal(page.status, 200);
   for (const text of ['Mehfil Kitchen', 'Veg buffet', 'Live dosa counter', 'Koramangala', 'Whitefield', 'Reset to demo business']) assert.ok(page.text.includes(text), text);
   assert.match(page.text, /value="1500"/);
-  assert.match((await o.get('/owner')).text, /<a href="\/owner\/setup">Business setup<\/a>/);
+  assert.match((await o.get('/owner')).text, /<a href="\/owner\/setup"[^>]*>[\s\S]*?Setup/);
 });
 
 test('saving applies to new enquiries everywhere: engine, enquiry form, owner pages, dashboard', async () => {

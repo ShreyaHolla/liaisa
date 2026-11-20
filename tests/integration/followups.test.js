@@ -22,8 +22,8 @@ test('due and not due: with the default 2 days nothing is due; at 0 the sent quo
   ctx.repos.businessSettings.save({ followupAfterDays: 0 });
   const page = await ctx.o.get('/owner');
   assert.match(page.text, /Follow-up due \(2\)/);
-  const section = page.text.slice(page.text.indexOf('Follow-up due'), page.text.indexOf('All enquiries'));
-  assert.ok(page.text.indexOf('Follow-up due') < page.text.indexOf('All enquiries'));
+  const section = page.text.slice(page.text.indexOf('Follow-up due'), page.text.indexOf('Sent quotes'));
+  assert.ok(page.text.indexOf('Follow-up due') < page.text.indexOf('Sent quotes'));
   assert.ok(section.includes('Rohan Iyer') && section.includes('Fatima Sheikh'));
   assert.match(section, /Quote sent 3 d ago · 1 of 2 reminders sent/, 'Fatima’s seeded reminder counts');
   assert.match(section, /Follow up<span class="sr"> with Rohan Iyer/);
@@ -97,7 +97,7 @@ test('at most 2 reminders per quote: the third is refused and the panel says so'
   assert.match(page.text, /Both reminders for this quote have been sent\./);
   assert.ok(!page.text.includes('>Send reminder<'));
   assert.match(page.text, /Reminder 2 sent by email/);
-  assert.ok(!(await ctx.o.get('/owner')).text.match(/Follow-up due \(\d\)[\s\S]*Rohan Iyer[\s\S]*All enquiries/), 'no longer listed as due');
+  assert.ok(!(await ctx.o.get('/owner')).text.match(/Follow-up due \(\d\)[\s\S]*Rohan Iyer[\s\S]*Sent quotes/), 'no longer listed as due');
 });
 
 test('WhatsApp customers: the button opens wa.me with the message filled in; nothing is emailed', async () => {
@@ -131,7 +131,7 @@ test('no reminder after the customer accepts, declines or asks a question', asyn
   const page = await ctx.o.get(`/owner/enquiries/${ann.id}`);
   assert.ok(!page.text.includes('Follow up</h2>'));
   assert.match(page.text, /Customer question/);
-  assert.ok(!(await ctx.o.get('/owner')).text.match(/Follow-up due[\s\S]*Rohan Iyer[\s\S]*All enquiries/));
+  assert.ok(!(await ctx.o.get('/owner')).text.match(/Follow-up due[\s\S]*Rohan Iyer[\s\S]*Sent quotes/));
 
   await request(ctx.app).post(`/q/${token(ctx.fatima)}/accept`).set(json);
   assert.equal((await ctx.o.postJson(`/owner/enquiries/${ctx.fatima.id}/followup/send`)).status, 409);
@@ -147,7 +147,7 @@ test('Mark as done hides the follow-up and the send is refused', async () => {
   assert.ok(!(await ctx.o.get(`/owner/enquiries/${ctx.rohan.id}`)).text.includes('Follow up</h2>'));
   const dash = await ctx.o.get('/owner');
   assert.match(dash.text, /Follow-up due \(1\)/);
-  assert.ok(!dash.text.slice(dash.text.indexOf('Follow-up due'), dash.text.indexOf('All enquiries')).includes('Rohan'));
+  assert.ok(!dash.text.slice(dash.text.indexOf('Follow-up due'), dash.text.indexOf('Sent quotes')).includes('Rohan'));
   assert.equal((await ctx.o.postJson(`/owner/enquiries/${ctx.rohan.id}/followup/send`)).status, 409);
   assert.equal((await ctx.o.postJson(`/owner/enquiries/${ctx.rohan.id}/followup/done`)).status, 200, 'idempotent');
   const draft = byName(ctx.repos, 'Kavita Reddy');

@@ -1,0 +1,28 @@
+<%- include('../partials/head', { title: (action === 'approve' ? 'Approve' : 'Decline') + ' quote · ' + biz.businessName }) %>
+<body>
+  <%- include('../partials/site-bar', { brand: biz.businessName, links: false, brandHref: '/owner' }) %>
+  <main class="container container--narrow">
+    <div class="card stack">
+      <p class="slate small"><%= action === 'approve' ? 'Approve and send' : 'Decline' %></p>
+      <h1><%= enquiry.customerName %></h1>
+      <% if (what) { %><p class="slate"><%= what %></p><% } %>
+      <%- include('../partials/quote-sheet', { rows: rows, total: total }) %>
+      <% if (warnings.length) { %>
+        <ul class="warnings" aria-label="Warnings"><% warnings.forEach(function (w) { %><li><%= w %></li><% }) %></ul>
+      <% } %>
+      <form method="post" action="/a/<%= token %>">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <% if (action === 'approve') { %>
+          <p class="small slate">This sends the quote to <%= enquiry.customerName.split(' ')[0] %> <%= enquiry.preferredChannel === 'whatsapp' ? '(you will tap Send in WhatsApp next)' : 'by email' %>. The link works once.</p>
+          <button class="btn lg block" type="submit">Approve &amp; send</button>
+        <% } else { %>
+          <p class="small slate">Nothing is sent to the customer. The link works once.</p>
+          <button class="btn danger lg block" type="submit">Decline enquiry</button>
+        <% } %>
+      </form>
+      <p class="small"><a href="/owner">Review in Liaisa instead</a></p>
+    </div>
+  </main>
+  <script src="/js/ui.js" defer></script>
+</body>
+</html>

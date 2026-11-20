@@ -31,7 +31,7 @@ function pastCustomer(repos, { name, channel = 'email', email, phone, status = '
 test('the Client Finder needs the owner login, is linked from the dashboard, and has two tabs', async () => {
   const ctx = await world();
   assert.equal((await request(ctx.app).get('/owner/clients')).status, 302);
-  assert.match((await ctx.o.get('/owner')).text, /<a href="\/owner\/clients">Client Finder<\/a>/);
+  assert.match((await ctx.o.get('/owner')).text, /<a href="\/owner\/clients"[^>]*>[\s\S]*?Clients/);
   const page = await ctx.o.get('/owner/clients');
   assert.equal(page.status, 200);
   assert.match(page.text, /Reconnect<\/a>/);

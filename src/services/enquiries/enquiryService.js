@@ -6,6 +6,9 @@ import { runTurn, todayIST } from '../agent/runTurn.js';
 import { normaliseRequirements } from '../agent/areas.js';
 import { unitNoun } from '../../util/format.js';
 import { notifyOwner } from '../quotes/mail.js';
+import { maybeAutoApprove } from '../quotes/clean.js';
+import { signLink } from '../quotes/oneTap.js';
+import { currentEstimate } from '../quotes/approval.js';
 import { ownerReadyEmail } from '../quotes/messages.js';
 
 const clock = (deps) => (deps.now ?? (() => new Date()))();
@@ -16,12 +19,33 @@ function findOrFail(repos, publicId) {
   return enquiry;
 }
 
-/** Tell the owner an enquiry is ready for approval. Fire and forget: SMTP never slows or fails the customer's request. */
+/**
+ * An enquiry just became ready. Auto-approve it if the owner turned that on and it is clean; otherwise tell
+ * the owner, with one-tap Approve / Decline links. Fire and forget: SMTP never slows or fails the customer's request.
+ */
 function announceReady(deps, enquiryId) {
-  if (!deps.mailer) return;
-  const enquiry = deps.repos.enquiries.get(enquiryId);
-  const pricing = deps.repos.pricingConfigs.latestApproved().configJson;
-  notifyOwner(deps, enquiryId, ownerReadyEmail({ config: deps.config, enquiry, pricing })).catch(() => {});
+  void (async () => {
+    try {
+      if (await maybeAutoApprove(deps, enquiryId)) return;
+      if (!deps.mailer) return;
+      const { repos, config } = deps;
+      const enquiry = repos.enquiries.get(enquiryId);
+      const estimate = currentEstimate(repos, enquiryId);
+      const pricing = repos.pricingConfigs.latestApproved().configJson;
+      const secret = config.sessionSecret;
+      const base = config.baseUrl.replace(/\/$/, '');
+      const links = secret && estimate ? {
+        approve: `${base}/a/${signLink(secret, { enquiryId, version: estimate.version, action: 'approve' })}`,
+        decline: `${base}/a/${signLink(secret, { enquiryId, version: estimate.version, action: 'decline' })}`,
+      } : null;
+      await notifyOwner(deps, enquiryId, ownerReadyEmail({
+        config, enquiry, pricing, links, total: estimate?.total ?? null, warnings: estimate?.warningsJson?.length ?? 0,
+        symbol: repos.businessSettings.get()?.currencySymbol ?? '₹',
+      }));
+    } catch {
+      // never surfaced to the customer
+    }
+  })();
 }
 
 export async function startEnquiry(deps, input) {

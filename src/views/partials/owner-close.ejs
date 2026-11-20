@@ -1,0 +1,17 @@
+    </div>
+  </main>
+  <% var nav = ownerNav; var badge = typeof pending !== 'undefined' ? pending : 0; %>
+  <nav class="tabbar" aria-label="Owner">
+    <% nav.forEach(function (n) { %>
+      <a href="<%= n.href %>"<%- active === n.key ? ' aria-current="page"' : '' %>>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><%- n.icon %></svg><span><%= n.label %></span><% if (n.key === 'approvals' && badge > 0) { %><span class="count" aria-label="<%= badge %> waiting"><%= badge %></span><% } %>
+      </a>
+    <% }) %>
+  </nav>
+</div>
+<%- include('confirm-dialog') %>
+<script src="/js/ui.js" defer></script>
+<script src="/js/owner.js" defer></script>
+<% (typeof scripts !== 'undefined' ? scripts : []).forEach(function (s) { %><script src="<%= s %>" defer></script><% }) %>
+</body>
+</html>

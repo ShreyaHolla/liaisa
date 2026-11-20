@@ -1,0 +1,30 @@
+<%- include('../partials/head', { title: 'Approve all clean quotes · ' + businessName }) %>
+<%- include('../partials/owner-open', { active: 'approvals', businessName: businessName, csrfToken: csrfToken, pending: pending }) %>
+<a class="back" href="/owner">← Approvals</a>
+<div class="page-head"><h1>Approve all clean quotes</h1></div>
+<% if (limit === null) { %>
+  <div class="empty"><strong>No limit set yet.</strong>Choose the biggest total you are happy to approve without a second look. <a href="/owner/setup#bulk">Set a limit on Business setup</a>.</div>
+<% } else if (items.length === 0) { %>
+  <div class="empty"><strong>No clean quotes right now.</strong>Quotes with a warning, or a total over <%= limitText %>, are never included. <a href="/owner">Back to Approvals</a></div>
+<% } else { %>
+  <p class="slate">Only quotes with no warnings and a total of <%= limitText %> or less are listed. Quotes with warnings are never included. This is exactly what will be approved:</p>
+  <ul class="compact" aria-label="Quotes that will be approved">
+    <% items.forEach(function (i) { %>
+      <li>
+        <span class="grow"><strong><%= i.name %></strong><% if (i.what) { %><span class="what"> · <%= i.what %></span><% } %><br>
+          <span class="slate small"><%= i.channel === 'whatsapp' ? 'WhatsApp: approved, then you tap Send' : 'Email: sent straight away' %></span></span>
+        <strong><%= i.total %></strong>
+      </li>
+    <% }) %>
+  </ul>
+  <p class="small slate"><%= items.length %> quote<%= items.length === 1 ? '' : 's' %> · <%= sum %> in total</p>
+  <form method="post" action="/owner/approve-clean" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <% items.forEach(function (i) { %><input type="hidden" name="ids" value="<%= i.id %>"><% }) %>
+    <div class="action-bar action-bar--sticky">
+      <button class="btn lg" type="submit">Approve &amp; send <%= items.length %> quote<%= items.length === 1 ? '' : 's' %></button>
+      <a class="btn secondary" href="/owner">Cancel</a>
+    </div>
+  </form>
+<% } %>
+<%- include('../partials/owner-close') %>

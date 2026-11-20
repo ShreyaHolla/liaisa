@@ -1,50 +1,66 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Liaisa</title>
-  <link rel="stylesheet" href="/css/app.css">
-</head>
+<%- include('../partials/head', { title: 'Liaisa: every enquiry answered, every quote yours to approve' }) %>
 <body>
-  <main>
-    <header class="top">
-      <p class="brand">Liaisa</p>
-      <nav aria-label="Main"><a href="#contact">Contact</a> · <a href="/owner/login">Owner login</a></nav>
-    </header>
-    <h1>Every enquiry answered.<br>Every quote yours to approve.</h1>
-    <p><a class="btn" href="/enquire">Try the demo enquiry</a></p>
+  <%- include('../partials/site-bar', { brand: 'Liaisa', links: true }) %>
+  <main class="container">
+    <section class="hero" aria-labelledby="hero-h">
+      <h1 id="hero-h">Every enquiry answered.<br>Every quote yours to approve.</h1>
+      <p class="lead">Liaisa answers your customers, works out the quote and waits for your yes before anything is sent.</p>
+      <div class="cluster">
+        <a class="btn lg" href="/enquire">Try the demo enquiry</a>
+        <a class="btn secondary lg" href="/owner/login">Owner login</a>
+      </div>
+    </section>
 
-    <section id="contact" class="contact" aria-labelledby="contact-title">
+    <section class="section" id="how" aria-labelledby="how-h">
+      <h2 id="how-h">How it works</h2>
+      <ol class="steps">
+        <li><div><strong>Describe your need</strong><span class="slate">Tell us what you want in your own words. Liaisa asks for anything missing.</span></div></li>
+        <li><div><strong>Owner approves the quote</strong><span class="slate">The owner checks the quote and approves it with one tap.</span></div></li>
+        <li><div><strong>Accept on your phone</strong><span class="slate">You get a clear quote by WhatsApp or email and can accept it in a tap.</span></div></li>
+      </ol>
+    </section>
+
+    <section class="section" aria-labelledby="safe-h">
+      <h2 id="safe-h">Why it’s safe</h2>
+      <div class="safe">
+        <p><strong>The server calculates the price.</strong> The assistant never works out or promises a price.</p>
+        <p><strong>The owner approves every quote.</strong> Nothing reaches a customer until the owner says yes.</p>
+      </div>
+    </section>
+
+    <section id="contact" class="section" aria-labelledby="contact-title">
       <h2 id="contact-title">Contact</h2>
-      <% if (contactNotice) { %>
-        <p class="notice notice-<%= contactNotice.tone %>" role="<%= contactNotice.tone === 'ok' ? 'status' : 'alert' %>"><%= contactNotice.text %></p>
-      <% } %>
-      <p id="contact-status" class="notice" hidden></p>
-      <form id="contact-form" method="post" action="/api/contact" novalidate>
-        <div class="field">
-          <label for="name">Your name</label>
-          <input id="name" name="name" type="text" autocomplete="name" maxlength="120" required>
-          <p class="field-error" id="error-name" hidden></p>
-        </div>
-        <div class="field">
-          <label for="email">Your email</label>
-          <input id="email" name="email" type="email" autocomplete="email" maxlength="200" required>
-          <p class="field-error" id="error-email" hidden></p>
-        </div>
-        <div class="field">
-          <label for="message">Message</label>
-          <textarea id="message" name="message" rows="5" maxlength="2000" required></textarea>
-          <p class="field-error" id="error-message" hidden></p>
-        </div>
-        <div class="hp" aria-hidden="true">
-          <label for="website">Leave this field empty</label>
-          <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
-        </div>
-        <button type="submit" class="btn">Send message</button>
-      </form>
+      <div class="card">
+        <% if (contactNotice) { %>
+          <p class="notice notice-<%= contactNotice.tone %>" role="<%= contactNotice.tone === 'ok' ? 'status' : 'alert' %>"><%= contactNotice.text %></p>
+        <% } %>
+        <p id="contact-status" class="notice" hidden></p>
+        <form id="contact-form" method="post" action="/api/contact" data-enhance novalidate>
+          <div class="field">
+            <label for="name">Your name</label>
+            <input id="name" name="name" type="text" autocomplete="name" maxlength="120" required>
+            <p class="field-error" id="error-name" hidden></p>
+          </div>
+          <div class="field">
+            <label for="email">Your email</label>
+            <input id="email" name="email" type="email" autocomplete="email" maxlength="200" required>
+            <p class="field-error" id="error-email" hidden></p>
+          </div>
+          <div class="field">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" rows="5" maxlength="2000" required></textarea>
+            <p class="field-error" id="error-message" hidden></p>
+          </div>
+          <div class="hp" aria-hidden="true">
+            <label for="website">Leave this field empty</label>
+            <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+          </div>
+          <button type="submit" class="btn block">Send message</button>
+        </form>
+      </div>
     </section>
   </main>
+  <script src="/js/ui.js" defer></script>
   <script src="/js/contact.js" defer></script>
 </body>
 </html>

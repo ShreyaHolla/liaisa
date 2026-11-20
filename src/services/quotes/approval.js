@@ -154,12 +154,13 @@ export function editEstimate(deps, enquiryId, input) {
 }
 
 /** Owner declines the enquiry: nothing is sent, reminders stop, any draft can no longer be approved. */
-export function declineEnquiry(deps, enquiryId) {
+export function declineEnquiry(deps, enquiryId, { reason = null, via = null } = {}) {
   const { repos } = deps;
   const enquiry = mustGetEnquiry(repos, enquiryId);
   if (!['collecting', 'awaiting_approval', 'needs_owner'].includes(enquiry.status)) throw new ConflictError('This enquiry has already moved on.');
   const estimate = currentEstimate(repos, enquiryId);
   if (estimate?.status === 'draft') repos.estimates.update(estimate.id, { status: 'superseded' });
-  repos.enquiries.update(enquiryId, { status: 'declined' });
+  repos.enquiries.update(enquiryId, { status: 'declined', ...(reason ? { declineReason: reason } : {}) });
   cancelFollowups(repos, enquiryId);
+  repos.activity.create({ enquiryId, text: `Declined${via ? ` with ${via}` : ''}${reason ? `: ${reason}` : ''}` }, clock(deps));
 }

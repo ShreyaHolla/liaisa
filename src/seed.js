@@ -32,6 +32,8 @@ export const DEMO_BUSINESS = {
   currencySymbol: '₹',
   whatsappNumber: null,
   city: 'Bengaluru',
+  bulkApproveLimit: null, // "clean quote" limit in whole rupees; none by default
+  autoApprove: false,
   followupAfterDays: 2,
 };
 

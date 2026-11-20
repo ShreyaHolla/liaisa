@@ -1,14 +1,7 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><%= biz.businessName %> · Enquiry</title>
-  <link rel="stylesheet" href="/css/app.css">
-</head>
+<%- include('../partials/head', { title: biz.businessName + ' · Enquiry' }) %>
 <body>
-  <main>
-    <header class="top"><p class="brand"><%= biz.businessName %></p></header>
+  <%- include('../partials/site-bar', { brand: biz.businessName, links: false }) %>
+  <main class="container container--narrow">
     <% if (biz.tagline) { %><p class="slate"><%= biz.tagline %></p><% } %>
 
     <div id="enquire-root" aria-live="polite">
@@ -16,7 +9,7 @@
 
       <% if (view === 'start') { %>
         <h1 tabindex="-1" data-focus>Tell us what you need</h1>
-        <form method="post" action="/api/enquiries" data-enhance novalidate>
+        <form method="post" action="/api/enquiries" class="card" data-enhance novalidate>
           <div class="field">
             <label for="description">What do you need?</label>
             <textarea id="description" name="description" rows="5" maxlength="1000" data-count="count" placeholder="<%= example %>"<% if (errors.description) { %> aria-invalid="true" aria-describedby="error-description"<% } %>><%= values.description || '' %></textarea>
@@ -48,33 +41,39 @@
             <label for="website">Leave this field empty</label>
             <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
           </div>
-          <button type="submit" class="btn">Send enquiry</button>
+          <button type="submit" class="btn lg block">Send enquiry</button>
           <p class="slate small wait" hidden>Checking your details…</p>
           <p class="slate small">We'll only use your details to reply about this enquiry.</p>
         </form>
 
       <% } else if (view === 'ask') { %>
         <h1 tabindex="-1" data-focus>One more thing</h1>
-        <p class="slate small">You wrote</p>
-        <blockquote class="wrote"><%= rawText %></blockquote>
-        <p class="ask"><%= question %></p>
-        <form method="post" action="/api/enquiries/<%= publicId %>/reply" data-enhance novalidate>
+        <div class="bubbles" role="log" aria-label="Your conversation">
+          <p class="bubble you"><span class="who">You</span><%= rawText %></p>
+          <p class="bubble liaisa"><span class="who">Liaisa for <%= biz.businessName %></span><%= question %></p>
+        </div>
+        <form method="post" action="/api/enquiries/<%= publicId %>/reply" class="card" data-enhance novalidate>
           <div class="field">
             <label for="answer">Your answer</label>
             <textarea id="answer" name="answer" rows="3" maxlength="1000"<% if (errors.answer) { %> aria-invalid="true" aria-describedby="error-answer"<% } %>><%= values.answer || '' %></textarea>
             <% if (errors.answer) { %><p class="field-error" id="error-answer"><%= errors.answer %></p><% } %>
           </div>
-          <button type="submit" class="btn">Send answer</button>
+          <button type="submit" class="btn lg block">Send answer</button>
           <p class="slate small wait" hidden>Checking your details…</p>
         </form>
 
       <% } else if (view === 'done') { %>
-        <h1 tabindex="-1" data-focus>Thanks<%= firstName ? ', ' + firstName : '' %>. Your enquiry is with <%= biz.businessName %>.</h1>
-        <% if (understood) { %>
-          <h2 class="small-h">What we understood</h2>
-          <p><%= [understood.serviceName, understood.quantity ? understood.quantity + ' ' + (understood.unitNoun || 'guests') : '', fmtDate(understood.eventDate), understood.location].filter(Boolean).concat(understood.addonNames || []).join(' · ') %></p>
-        <% } %>
-        <p>You'll get your quote <%= replyChannel === 'whatsapp' ? 'on WhatsApp' : 'by email' %> once the owner approves it.</p>
+        <div class="card success">
+          <div class="tick" aria-hidden="true">✓</div>
+          <h1 tabindex="-1" data-focus>Thanks<%= firstName ? ', ' + firstName : '' %>. Your enquiry is with <%= biz.businessName %>.</h1>
+          <% if (understood) { %>
+            <div class="summary">
+              <strong>What we understood</strong>
+              <span><%= [understood.serviceName, understood.quantity ? understood.quantity + ' ' + (understood.unitNoun || 'guests') : '', fmtDate(understood.eventDate), understood.location].filter(Boolean).concat(understood.addonNames || []).join(' · ') %></span>
+            </div>
+          <% } %>
+          <p>You’ll get your quote <%= replyChannel === 'whatsapp' ? 'on WhatsApp' : 'by email' %> once the owner approves it.</p>
+        </div>
 
       <% } else if (view === 'scope') { %>
         <h1 tabindex="-1" data-focus>Thanks for asking</h1>
@@ -83,7 +82,7 @@
       <% } else if (view === 'fallback') { %>
         <% const pre = prefill || {}; const preAddons = [].concat(pre.addon_ids || []); const known = areas.includes(pre.location); %>
         <h1 tabindex="-1" data-focus>Tell us a few details</h1>
-        <form method="post" action="/api/enquiries/<%= publicId %>/form" data-enhance novalidate>
+        <form method="post" action="/api/enquiries/<%= publicId %>/form" class="card" data-enhance novalidate>
           <div class="field">
             <label for="service_id">Service</label>
             <select id="service_id" name="service_id"<% if (errors.service_id) { %> aria-invalid="true" aria-describedby="error-service_id"<% } %>>
@@ -121,14 +120,15 @@
             <textarea id="notes" name="notes" rows="3" maxlength="1000"><%= pre.notes || '' %></textarea>
           </div>
           <% if (errors._form) { %><p class="field-error"><%= errors._form %></p><% } %>
-          <button type="submit" class="btn">Send details</button>
+          <button type="submit" class="btn lg block">Send details</button>
           <p class="slate small wait" hidden>Checking your details…</p>
         </form>
       <% } %>
     </div>
 
-    <footer class="slate small foot">Powered by Liaisa</footer>
+    <footer class="slate small section">Powered by Liaisa</footer>
   </main>
+  <script src="/js/ui.js" defer></script>
   <script src="/js/enquire.js" defer></script>
 </body>
 </html>

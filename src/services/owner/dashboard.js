@@ -4,6 +4,7 @@ import { formatDate } from '../../util/formatDate.js';
 import { currentEstimate } from '../quotes/approval.js';
 import { understoodOf } from '../enquiries/enquiryService.js';
 import { followupState, dueFollowUps, draftReminder, MAX_REMINDERS } from '../followups/reminders.js';
+import { cleanQuotes, isCleanQuote, limitOf } from '../quotes/clean.js';
 
 /** DESIGN §7.2: DB status -> [owner label, tone]. */
 const STATUS = {
@@ -42,14 +43,22 @@ const RANK = { send_failed: 0, approval: 1, review: 2, customer_question: 3 };
 /** What needs the owner now (openapi DashboardSummary.needsYou). */
 function needsYouItem(repos, pricing, enquiry, estimate) {
   const base = { enquiryId: enquiry.id, customerName: enquiry.customerName, what: whatOf(pricing, enquiry.requirementsJson) };
+  // What the Approvals card shows: service, quantity, date, a chip per warning, and whether it is "clean".
+  const req = enquiry.requirementsJson ?? {};
+  const svc = pricing.services.find((s) => s.id === req.service_id);
+  const card = {
+    service: svc?.name ?? null, quantity: req.quantity ?? null, unit: svc ? unitNoun(svc) : null, eventDate: req.event_date ?? null,
+    channel: enquiry.preferredChannel, version: estimate?.version ?? null, warnings: (estimate?.warningsJson ?? []).map((c) => warningText(c, pricing, req)),
+    clean: isCleanQuote(enquiry, estimate, limitOf(repos)),
+  };
   const total = estimate && ['draft', 'approved', 'approved_send_failed'].includes(estimate.status) ? { total: estimate.total } : {};
   if (enquiry.status === 'awaiting_approval' && estimate?.status === 'approved_send_failed') {
     return { kind: 'send_failed', label: FAILED[0], ...base, ...total };
   }
   if (enquiry.status === 'awaiting_approval') {
-    return { kind: 'approval', label: statusOf(enquiry, estimate)[0], ...base, ...total };
+    return { kind: 'approval', label: statusOf(enquiry, estimate)[0], ...base, ...total, ...card };
   }
-  if (enquiry.status === 'needs_owner') return { kind: 'review', label: STATUS.needs_owner[0], ...base, ...total };
+  if (enquiry.status === 'needs_owner') return { kind: 'review', label: STATUS.needs_owner[0], ...base, ...total, ...card };
   const last = lastResponse(repos, enquiry.id);
   if (['quoted', 'followed_up'].includes(enquiry.status) && last?.type === 'question') {
     return { kind: 'customer_question', label: 'Customer question', ...base, what: `asked: “${truncate(last.message ?? '', 60)}”` };
@@ -84,9 +93,10 @@ export function dashboardSummary(deps, now = new Date()) {
 
   const all = enquiries.map((e) => {
     const [label, tone] = statusOf(e, currentEstimate(repos, e.id));
-    return { id: e.id, name: e.customerName, what: whatOf(pricing, e.requirementsJson), label, tone, updated: timeAgo(e.updatedAt, now) };
+    return { id: e.id, name: e.customerName, what: whatOf(pricing, e.requirementsJson), label, tone, status: e.status, updated: timeAgo(e.updatedAt, now) };
   });
-  return { needsYou, week, followUps, all };
+  const clean = cleanQuotes(deps).map(({ enquiry, estimate }) => ({ id: enquiry.id, name: enquiry.customerName, total: estimate.total, channel: enquiry.preferredChannel }));
+  return { needsYou, week, followUps, all, bulk: { limit: limitOf(repos), clean } };
 }
 
 /** Plain-words warning (DESIGN §4.5, §7.3). */
@@ -143,6 +153,7 @@ export function enquiryDetail(deps, id, now = new Date()) {
     warnings: (estimate?.warningsJson ?? []).map((c) => warningText(c, pricing, requirements)),
     discount: discount ? { amount: -discount.amount, reason: discount.reason } : null,
     history: enquiry.aiState?.history ?? [],
+    events: repos.activity.listByEnquiry(id).map((a) => ({ text: a.text, at: a.createdAt })),
     emails: repos.emails.listByEnquiry(id).filter((m) => m.type === 'estimate'), // reminders are listed from the followups rows
     shares: repos.whatsappShares.listByEnquiry(id).filter((s) => s.type === 'estimate'),
     responses: repos.customerResponses.listByEnquiry(id),

@@ -77,13 +77,17 @@ ${note ? `<p>${esc(note)}</p>` : ''}
   return { subject, text, html };
 }
 
-/** Owner notice when an enquiry is ready for approval (DESIGN §4.10). */
-export function ownerReadyEmail({ config, enquiry, pricing }) {
+/** Owner notice when an enquiry is ready for approval (DESIGN §4.10). `links` = signed one-tap URLs (optional). */
+export function ownerReadyEmail({ config, enquiry, pricing, links = null, total = null, warnings = 0, symbol = '₹' }) {
   const service = pricing.services.find((s) => s.id === enquiry.requirementsJson?.service_id);
   const qty = enquiry.requirementsJson?.quantity;
   const subject = `New enquiry: ${firstName(enquiry)}${service ? `, ${service.name.toLowerCase()}${qty ? ` for ${qty}` : ''}` : ''}`;
   const link = ownerUrl(config, enquiry.id);
-  return { subject, text: `${enquiry.summaryForOwner ?? 'A new enquiry is ready for your approval.'}\n\nReview in Liaisa: ${link}` };
+  const lines = [enquiry.summaryForOwner ?? 'A new enquiry is ready for your approval.'];
+  if (total !== null) lines.push('', `Quote total: ${inr(total, symbol)} · ${warnings === 0 ? 'no warnings' : `${warnings} warning${warnings === 1 ? '' : 's'}: check before approving`}`);
+  if (links) lines.push('', `Approve and send: ${links.approve}`, `Decline: ${links.decline}`, '(Each link opens a confirm page and works once, for 24 hours.)');
+  lines.push('', `Review in Liaisa: ${link}`);
+  return { subject, text: lines.join('\n') };
 }
 
 /** Owner notice when a customer answers a quote. */

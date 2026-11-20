@@ -5,7 +5,7 @@ import { createBusinessSettingsStore } from './db/repos/businessSettings.js';
 import { createPricingConfigStore } from './db/repos/pricingConfigs.js';
 import {
   createFollowupStore, createEmailStore, createWhatsappShareStore,
-  createCustomerResponseStore, createAiCallStore, createLeadStore, createOutreachStore, createDiscoveryRunStore,
+  createCustomerResponseStore, createAiCallStore, createLeadStore, createOutreachStore, createDiscoveryRunStore, createActivityStore, createUsedLinkStore,
 } from './db/repos/simple.js';
 import { createMockClient } from './ai/mockClient.js';
 import { createClaudeClient } from './ai/claudeClient.js';
@@ -27,6 +27,8 @@ export function createRepos() {
     leads: createLeadStore(),
     outreach: createOutreachStore(),
     discoveryRuns: createDiscoveryRunStore(),
+    activity: createActivityStore(),
+    usedLinks: createUsedLinkStore(),
   };
 }
 

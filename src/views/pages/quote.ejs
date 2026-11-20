@@ -1,17 +1,10 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
-  <title>Your quote from <%= biz.businessName %></title>
-  <link rel="stylesheet" href="/css/app.css">
-</head>
+<%- include('../partials/head', { title: 'Your quote from ' + biz.businessName }) %>
 <body>
-  <main>
-    <article class="quote-sheet">
-      <p class="brand"><%= biz.businessName %></p>
-      <h1>Quote for <%= firstName %></h1>
+  <%- include('../partials/site-bar', { brand: biz.businessName, links: false }) %>
+  <main class="container container--narrow">
+    <article class="quote-card">
+      <p class="slate small">Quote for <%= firstName %></p>
+      <h1><%= biz.businessName %></h1>
       <p class="slate">Valid until <%= validUntil %></p>
 
       <%- include('../partials/quote-sheet', { rows: rows, total: total }) %>
@@ -33,10 +26,8 @@
         <% if (sent === 'question') { %>
           <p class="banner tone-done" role="status">Question sent. <%= biz.businessName %> will reply to you.</p>
         <% } %>
-        <form method="post" action="/q/<%= token %>/accept">
-          <button class="btn block" type="submit">Accept quote</button>
-        </form>
-        <details class="edit" <%= errors.message ? 'open' : '' %>>
+
+        <details class="edit" id="ask" <%= errors.message ? 'open' : '' %>>
           <summary>Ask a question</summary>
           <form method="post" action="/q/<%= token %>/question">
             <div class="field">
@@ -47,13 +38,25 @@
             <button class="btn secondary" type="submit">Send question</button>
           </form>
         </details>
-        <form method="post" action="/q/<%= token %>/decline">
-          <label class="choice small"><input type="checkbox" name="doNotContact" value="on"> Please don’t contact me again about other work</label>
-          <button class="btn danger-text" type="submit">Decline</button>
-        </form>
+        <details class="edit" id="decline">
+          <summary>Decline this quote</summary>
+          <form method="post" action="/q/<%= token %>/decline">
+            <label class="check"><input type="checkbox" name="doNotContact" value="on"> Please don’t contact me again about other work</label>
+            <button class="btn danger" type="submit">Decline</button>
+          </form>
+        </details>
+
+        <div class="action-bar action-bar--public">
+          <form method="post" action="/q/<%= token %>/accept">
+            <button class="btn lg" type="submit">Accept quote</button>
+          </form>
+          <a class="btn secondary" href="#ask" data-open="ask">Ask a question</a>
+          <a class="btn danger-text" href="#decline" data-open="decline">Decline</a>
+        </div>
       <% } %>
       <% if (waLink) { %><p class="small"><a href="<%= waLink %>">Message <%= biz.businessName %> on WhatsApp</a></p><% } %>
     </article>
   </main>
+  <script src="/js/ui.js" defer></script>
 </body>
 </html>

@@ -1,0 +1,22 @@
+<%- include('../partials/head', { title: 'Follow-ups · ' + businessName }) %>
+<%- include('../partials/owner-open', { active: 'followups', businessName: businessName, csrfToken: csrfToken, pending: pending }) %>
+<div class="page-head"><h1>Follow-ups</h1></div>
+<% if (notice) { %><p class="banner tone-done" role="status"><%= notice[1] %></p><% } %>
+<p class="slate">Quotes you sent that got no reply after <%= days === 0 ? 'no days (shown straight away)' : days + (days === 1 ? ' day' : ' days') %>. You send each reminder yourself, up to 2 per quote. <a href="/owner/setup#followups">Change the days</a>.</p>
+<section class="section" aria-labelledby="fu-h">
+  <h2 id="fu-h">Follow-up due (<%= summary.followUps.length %>)</h2>
+  <% if (summary.followUps.length === 0) { %>
+    <div class="empty"><strong>No sent quotes are waiting for a reminder.</strong>When a quote has had no reply for a while, it will appear here.</div>
+  <% } else { %>
+    <ul class="compact">
+      <% summary.followUps.forEach(function (f) { %>
+        <li>
+          <span class="grow"><strong><%= f.customerName %></strong><% if (f.what) { %><span class="what"> · <%= f.what %></span><% } %><br>
+            <span class="slate small"><%= f.quoteAge %> · <%= f.remindersSent %> of 2 reminders sent</span></span>
+          <a class="btn" href="/owner/enquiries/<%= f.enquiryId %>">Follow up<span class="sr"> with <%= f.customerName %></span></a>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</section>
+<%- include('../partials/owner-close') %>

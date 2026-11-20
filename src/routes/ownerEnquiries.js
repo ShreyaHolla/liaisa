@@ -5,11 +5,12 @@ import { ConflictError, NotFoundError, ValidationError } from '../errors.js';
 import { errorBody } from '../middleware/errors.js';
 import { approveAndSend, editEstimate, declineEnquiry, retryQuoteEmail, shareOnWhatsapp } from '../services/quotes/approval.js';
 import { editSchema, approveSchema, flatErrors } from '../services/quotes/schema.js';
-import { dashboardSummary, enquiryDetail } from '../services/owner/dashboard.js';
+import { dashboardSummary, enquiryDetail, whatOf } from '../services/owner/dashboard.js';
 import { sendReminder, markFollowupDone } from '../services/followups/reminders.js';
+import { cleanQuotes, approveClean, limitOf } from '../services/quotes/clean.js';
 import { quoteUrl, describeLines } from '../services/quotes/messages.js';
 import { inr, timeAgo, unitLabel } from '../util/format.js';
-import { formatDate } from '../util/formatDate.js';
+import { formatDate, spokenDate } from '../util/formatDate.js';
 
 const wantsJson = (req) => req.accepts(['html', 'json']) === 'json';
 
@@ -28,7 +29,14 @@ const NOTICES = {
   conflict: ['problem', 'That quote has changed or already moved on. Review it and try again.'],
   invalid: ['problem', 'Something in that request wasn’t right. Check it and try again.'],
 };
-const notice = (req) => (typeof req.query.n === 'string' && Object.hasOwn(NOTICES, req.query.n) ? NOTICES[req.query.n] : null);
+const notice = (req) => {
+  if (req.query.n === 'bulk_done') {
+    const c = Number.parseInt(req.query.c, 10);
+    const n = Number.isInteger(c) && c >= 0 && c <= 999 ? c : 0;
+    return ['ok', n === 0 ? 'No clean quotes were left to approve.' : `${n} quote${n === 1 ? '' : 's'} approved.`];
+  }
+  return typeof req.query.n === 'string' && Object.hasOwn(NOTICES, req.query.n) ? NOTICES[req.query.n] : null;
+};
 
 const capital = (s) => `${s.charAt(0).toUpperCase()}${s.slice(1)}.`;
 
@@ -72,11 +80,47 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
   // ---- Dashboard -------------------------------------------------------------------------
   router.get('/', (req, res) => {
     const summary = dashboardSummary(deps());
+    const pending = summary.needsYou.filter((n) => ['approval', 'review'].includes(n.kind));
     res.render('pages/owner', {
-      businessName: businessName(), csrfToken: res.locals.csrfToken, summary, inr: money, notice: notice(req),
-      baseUrl: config.baseUrl,
+      businessName: businessName(), csrfToken: res.locals.csrfToken, summary, inr: money, notice: notice(req), formatDate, spokenDate,
+      baseUrl: config.baseUrl, active: 'approvals', pending: pending.length, approvals: pending,
+      attention: summary.needsYou.filter((n) => !['approval', 'review'].includes(n.kind)),
     });
   });
+
+  // ---- Follow-ups page (tab) --------------------------------------------------------------------
+  router.get('/follow-ups', (req, res) => {
+    const summary = dashboardSummary(deps());
+    res.render('pages/owner-followups', {
+      businessName: businessName(), csrfToken: res.locals.csrfToken, summary, notice: notice(req), active: 'followups',
+      pending: summary.needsYou.filter((n) => ['approval', 'review'].includes(n.kind)).length,
+      days: repos.businessSettings.get()?.followupAfterDays ?? 2,
+    });
+  });
+
+  // ---- Approve all clean quotes: a confirmation first, then exactly what was listed -------------------
+  router.get('/approve-clean', (req, res) => {
+    const pricing = repos.pricingConfigs.latestApproved().configJson;
+    const items = cleanQuotes(deps()).map(({ enquiry, estimate }) => ({
+      id: enquiry.id, name: enquiry.customerName, total: money(estimate.total), amount: estimate.total, channel: enquiry.preferredChannel,
+      what: whatOf(pricing, enquiry.requirementsJson),
+    }));
+    res.render('pages/owner-bulk', {
+      businessName: businessName(), csrfToken: res.locals.csrfToken, items, limit: limitOf(repos), limitText: limitOf(repos) === null ? null : money(limitOf(repos)),
+      sum: money(items.reduce((n, i) => n + i.amount, 0)), active: 'approvals', pending: items.length,
+    });
+  });
+  router.post('/approve-clean', wrap(async (req, res, next) => {
+    try {
+      const raw = req.body?.ids;
+      const ids = (Array.isArray(raw) ? raw : raw === undefined ? [] : [raw]).map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0).slice(0, 200);
+      const result = await approveClean(deps(), ids);
+      if (wantsJson(req)) return res.json({ approved: result.approved, skipped: result.skipped });
+      return res.redirect(303, `/owner?n=bulk_done&c=${result.approved.length}`);
+    } catch (err) {
+      return fail(req, res, err, next, '/owner');
+    }
+  }));
 
   router.get('/api/summary', (req, res) => {
     const { needsYou, week } = dashboardSummary(deps());
@@ -150,7 +194,8 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
   // ---- Decline ---------------------------------------------------------------------------
   router.post('/enquiries/:id/decline', (req, res, next) => {
     try {
-      declineEnquiry(deps(), req.enquiryId);
+      const reason = typeof req.body?.reason === 'string' ? req.body.reason.replace(/[\r\n]+/g, ' ').trim().slice(0, 200) : '';
+      declineEnquiry(deps(), req.enquiryId, { reason: reason || null });
       return wantsJson(req) ? res.json({ ok: true }) : res.redirect(303, '/owner?n=declined');
     } catch (err) {
       return fail(req, res, err, next, detailUrl(req));

@@ -1,0 +1,13 @@
+<%- include('../partials/head', { title: title + ' · ' + biz.businessName }) %>
+<body>
+  <%- include('../partials/site-bar', { brand: biz.businessName, links: false, brandHref: '/owner' }) %>
+  <main class="container container--narrow">
+    <div class="card success">
+      <div class="tick" aria-hidden="true"><%= ok ? '✓' : '!' %></div>
+      <h1 role="<%= ok ? 'status' : 'alert' %>"><%= title %></h1>
+      <p><%= text %></p>
+      <p><a class="btn secondary" href="/owner">Open Liaisa</a></p>
+    </div>
+  </main>
+</body>
+</html>
