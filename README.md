@@ -10,6 +10,7 @@ Every enquiry answered. Every quote yours to approve.</p>
   <a href="https://liaisa.co.in/b/mehfil-kitchen/enquire">Try the demo enquiry</a> ·
   <a href="docs/ARCHITECTURE.md">Architecture</a> ·
   <a href="docs/PROMPTS.md">How it was built</a>
+  <a href="https://drive.google.com/drive/folders/1JqGb3bK0xnVFK_3NkAJzOu9Tb-d31Fx-?usp=sharing">Artifacts</a>
 </p>
 
 Built for the **GoDaddy Inclusive Innovation Hackathon 2026** with Claude and GoDaddy Node.js hosting.
