@@ -210,3 +210,5 @@ Update after every milestone, real test run and purchase.
 |---|---|---|---|---|---|---|---|
 | | | Domain | – | $0 | $5.34 | $0 | $5.34 |
 | | | M1 | Sonnet & Haiku | $0.2638 | $0 | $0.2638 | $5.34 |
+| | | M5 | Sonnet & Haiku | $0.52 | $0 |  | $5.34 |
+| | | M4 | Sonnet & Haiku | $0.65 | $0 |  | $5.34 |
