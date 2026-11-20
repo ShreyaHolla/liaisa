@@ -29,7 +29,7 @@
   <section class="section" aria-labelledby="wait-h">
     <h2 id="wait-h">Waiting for you (<%= approvals.length %>)</h2>
     <% if (approvals.length === 0) { %>
-      <div class="empty"><strong>Nothing needs you right now.</strong>New enquiries will appear here. Share your enquiry link: <a href="/enquire"><%= baseUrl.replace(/\/$/, '') %>/enquire</a></div>
+      <div class="empty"><strong>Nothing needs you right now.</strong>New enquiries will appear here. Share your enquiry link: <a href="<%= share.url %>"><%= share.url %></a></div>
     <% } else { %>
       <ul class="inbox">
         <% approvals.forEach(function (n) { %>
@@ -148,7 +148,7 @@
   <section class="section" aria-labelledby="all-h">
     <h2 id="all-h">All enquiries</h2>
     <% if (summary.all.length === 0) { %>
-      <div class="empty"><strong>No enquiries yet.</strong>Share your enquiry link: <a href="/enquire"><%= baseUrl.replace(/\/$/, '') %>/enquire</a></div>
+      <div class="empty"><strong>No enquiries yet.</strong>Share your enquiry link: <a href="<%= share.url %>"><%= share.url %></a></div>
     <% } else { %>
       <ul class="compact">
         <% summary.all.forEach(function (e) { %>

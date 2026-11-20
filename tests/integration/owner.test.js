@@ -7,6 +7,7 @@ import { loadConfig } from '../../src/config.js';
 
 const PASSWORD = 'correct horse battery';
 const HASH = bcrypt.hashSync(PASSWORD, 4); // low cost: tests only
+const DEMO_EMAIL = 'owner@mehfilkitchen.example';
 const SECRET = 'x'.repeat(48);
 const owner = { OWNER_PASSWORD_HASH: HASH, SESSION_SECRET: SECRET };
 
@@ -21,7 +22,7 @@ async function attemptLogin(app, password, extra = {}) {
   const page = await request(app).get('/owner/login').set(extra);
   const cookie = cookieOf(page);
   const res = await request(app).post('/owner/login').set({ Cookie: cookie, ...extra })
-    .type('form').send({ _csrf: tokenOf(page), password });
+    .type('form').send({ _csrf: tokenOf(page), email: DEMO_EMAIL, password });
   return { page, cookie, res };
 }
 
@@ -50,7 +51,7 @@ test('TC-DSH-02 wrong password: error, no session; the 6th try in 15 minutes is 
   const app = appFor();
   const { cookie, res } = await attemptLogin(app, 'not the password');
   assert.equal(res.status, 401);
-  assert.match(res.text, /That password doesn&#39;t match\. Try again\./);
+  assert.match(res.text, /That email and password don&#39;t match\. Try again\./);
   const after = await request(app).get('/owner').set('Cookie', cookie);
   assert.equal(after.status, 302);
 
@@ -100,9 +101,9 @@ test('TC-DSH-04 owner POSTs without a valid CSRF token: 403', async () => {
   const app = appFor();
   // Login form itself
   const page = await request(app).get('/owner/login');
-  const noToken = await request(app).post('/owner/login').set('Cookie', cookieOf(page)).type('form').send({ password: PASSWORD });
+  const noToken = await request(app).post('/owner/login').set('Cookie', cookieOf(page)).type('form').send({ email: DEMO_EMAIL, password: PASSWORD });
   assert.equal(noToken.status, 403);
-  const badToken = await request(app).post('/owner/login').set('Cookie', cookieOf(page)).type('form').send({ _csrf: 'forged', password: PASSWORD });
+  const badToken = await request(app).post('/owner/login').set('Cookie', cookieOf(page)).type('form').send({ _csrf: 'forged', email: DEMO_EMAIL, password: PASSWORD });
   assert.equal(badToken.status, 403);
 
   // Logged-in owner

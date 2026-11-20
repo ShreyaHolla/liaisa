@@ -68,7 +68,7 @@ export async function createDraft(deps, { type, ref }) {
   } catch {
     result = null; // never leave the owner without a draft
   }
-  const footer = `\n\nYou can reach us any time: ${config.baseUrl.replace(/\/$/, '')}/enquire`;
+  const footer = `\n\nYou can reach us any time: ${config.baseUrl.replace(/\/$/, '')}/b/${repos.business.slug}/enquire`;
   const body = result?.text ?? factsFallback(who.subject, business);
   if (type === 'lead' && who.leadId) repos.leads.update(who.leadId, { status: 'drafted' });
   return repos.outreach.update(row.id, { message: `${body}${footer}`, source: result?.source ?? 'template' });

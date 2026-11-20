@@ -21,7 +21,7 @@ async function ready(ctx, { name = 'Tara Sen', channel = 'email', quantity = 40,
     customerName: name, customerEmail: channel === 'email' ? `${name.split(' ')[0].toLowerCase()}@example.test` : null,
     customerPhone: channel === 'whatsapp' ? '919845012345' : null, preferredChannel: channel, rawText: 'Veg lunch', status: 'collecting',
   });
-  await request(ctx.app).post(`/api/enquiries/${e.publicId}/form`).send({ service_id: 'veg_buffet', quantity, event_date: '2026-12-15', location });
+  await request(ctx.app).post(`/b/mehfil-kitchen/api/enquiries/${e.publicId}/form`).send({ service_id: 'veg_buffet', quantity, event_date: '2026-12-15', location });
   await tick();
   return ctx.repos.enquiries.get(e.id);
 }
@@ -244,7 +244,7 @@ test('auto-approve does nothing when email is off, even when switched on', async
 
 test('signed links: valid, expired after 24 hours, tampered, malformed, wrong secret, and every token is different', () => {
   const now = new Date('2026-12-01T10:00:00Z');
-  const t = signLink(SECRET, { enquiryId: 7, version: 2, action: 'approve' }, now);
+  const t = signLink(SECRET, { businessId: 1, enquiryId: 7, version: 2, action: 'approve' }, now);
   const ok = verifyLink(SECRET, t, new Date(now.getTime() + 23 * HOUR));
   assert.equal(ok.ok, true);
   assert.deepEqual([ok.payload.enquiryId, ok.payload.version, ok.payload.action], [7, 2, 'approve']);
@@ -256,7 +256,7 @@ test('signed links: valid, expired after 24 hours, tampered, malformed, wrong se
   assert.equal(verifyLink(SECRET, `${forged}.${sig}`, now).reason, 'tampered', 'changing the action breaks the signature');
   assert.equal(verifyLink(SECRET, `${body}.${sig.slice(0, -2)}AA`, now).reason, 'tampered');
   for (const junk of ['', 'abc', 'a.b.c', `${body}.`, 'x'.repeat(500), null, undefined, 42]) assert.equal(verifyLink(SECRET, junk, now).ok, false, String(junk));
-  assert.notEqual(signLink(SECRET, { enquiryId: 7, version: 2, action: 'approve' }, now), t, 'a random id makes each link unique');
+  assert.notEqual(signLink(SECRET, { businessId: 1, enquiryId: 7, version: 2, action: 'approve' }, now), t, 'a random id makes each link unique');
 });
 
 test('the owner notice email carries signed Approve and Decline links plus the review link', async () => {
@@ -360,7 +360,7 @@ test('a double tap at once approves once', async () => {
 test('expired, tampered and malformed links are refused with a friendly page and change nothing', async () => {
   const ctx = await world();
   const e = await ready(ctx);
-  const old = signLink(SECRET, { enquiryId: e.id, version: 1, action: 'approve' }, new Date(Date.now() - 25 * HOUR));
+  const old = signLink(SECRET, { businessId: 1, enquiryId: e.id, version: 1, action: 'approve' }, new Date(Date.now() - 25 * HOUR));
   const expired = await request(ctx.app).get(`/a/${old}`);
   assert.equal(expired.status, 410);
   assert.match(expired.text, /This link has expired/);
@@ -382,7 +382,7 @@ test('expired, tampered and malformed links are refused with a friendly page and
 test('a link signed with a different secret is refused', async () => {
   const ctx = await world();
   const e = await ready(ctx);
-  const alien = signLink('z'.repeat(48), { enquiryId: e.id, version: 1, action: 'approve' });
+  const alien = signLink('z'.repeat(48), { businessId: 1, enquiryId: e.id, version: 1, action: 'approve' });
   assert.equal((await request(ctx.app).get(`/a/${alien}`)).status, 400);
 });
 
@@ -561,7 +561,7 @@ test('every screen: mobile viewport, no inline style attributes, no inline scrip
   const rohan = byName(ctx.repos, 'Rohan Iyer');
   const tokenOfQuote = estimateOf(ctx.repos, rohan).quoteToken;
   const kavita = byName(ctx.repos, 'Kavita Reddy');
-  const paths = [['/', false], ['/enquire', false], ['/owner/login', false], [`/q/${tokenOfQuote}`, false], ['/owner', true], [`/owner/enquiries/${kavita.id}`, true],
+  const paths = [['/', false], ['/b/mehfil-kitchen/enquire', false], ['/owner/login', false], [`/b/mehfil-kitchen/q/${tokenOfQuote}`, false], ['/owner', true], [`/owner/enquiries/${kavita.id}`, true],
     ['/owner/approve-clean', true], ['/owner/follow-ups', true], ['/owner/clients?tab=reconnect', true], ['/owner/clients?tab=leads', true], ['/owner/clients?tab=find', true], ['/owner/setup', true]];
   for (const [path, owner] of paths) {
     const res = owner ? await ctx.o.get(path) : await request(ctx.app).get(path);
@@ -578,7 +578,7 @@ test('the landing page: hero with two buttons, three steps, the safety strip, th
   const page = await request(ctx.app).get('/');
   assert.match(page.text, /<header class="site-bar">/);
   assert.match(page.text, /Every enquiry answered\.<br>Every quote yours to approve\./);
-  assert.match(page.text, /<a class="btn lg" href="\/enquire">Try the demo enquiry<\/a>/);
+  assert.match(page.text, /<a class="btn lg" href="\/b\/mehfil-kitchen\/enquire">Try the demo enquiry<\/a>/);
   assert.match(page.text, /<a class="btn secondary lg" href="\/owner\/login">Owner login<\/a>/);
   assert.match(page.text, /<a href="\/owner\/login">Owner login<\/a>/);
   for (const step of ['Describe your need', 'Owner approves the quote', 'Accept on your phone']) assert.ok(page.text.includes(step), step);
@@ -592,7 +592,7 @@ test('the landing page: hero with two buttons, three steps, the safety strip, th
 test('the quote page: a clean card with a large total and sticky Accept, Ask a question and Decline', async () => {
   const ctx = await world();
   const rohan = byName(ctx.repos, 'Rohan Iyer');
-  const page = await request(ctx.app).get(`/q/${estimateOf(ctx.repos, rohan).quoteToken}`);
+  const page = await request(ctx.app).get(`/b/mehfil-kitchen/q/${estimateOf(ctx.repos, rohan).quoteToken}`);
   assert.match(page.text, /<article class="quote-card">/);
   assert.match(page.text, /<div class="action-bar action-bar--public">/);
   assert.match(page.text, /Accept quote<\/button>/);
@@ -604,7 +604,7 @@ test('the quote page: a clean card with a large total and sticky Accept, Ask a q
 
 test('the enquiry question screen is a chat: the customer’s message and Liaisa’s question as bubbles', async () => {
   const ctx = await world();
-  const res = await request(ctx.app).post('/api/enquiries').set('Accept', 'text/html').type('form').send({ name: 'Meera', channel: 'email', email: 'm@example.test', description: 'Veg lunch for 40 people please' });
+  const res = await request(ctx.app).post('/b/mehfil-kitchen/api/enquiries').set('Accept', 'text/html').type('form').send({ name: 'Meera', channel: 'email', email: 'm@example.test', description: 'Veg lunch for 40 people please' });
   assert.match(res.text, /<p class="bubble you"><span class="who">You<\/span>Veg lunch for 40 people please<\/p>/);
   assert.match(res.text, /<p class="bubble liaisa"><span class="who">Liaisa for Mehfil Kitchen<\/span>/);
 });

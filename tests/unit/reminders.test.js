@@ -158,7 +158,7 @@ test('channel selection: email customers get an email; WhatsApp customers get a 
   assert.equal(mail.to, 'meera@example.test');
   assert.equal(mail.subject, 'Still planning your Tue 15 Dec event?');
   assert.match(mail.text, /^Hi Ila,\n\nJust checking in on your veg buffet quote from Mehfil Kitchen for Tue 15 Dec\./);
-  assert.ok(mail.text.includes(`https://liaisa.co.in/q/${currentEstimate(w.repos, mailCustomer.id).quoteToken}`));
+  assert.ok(mail.text.includes(`https://liaisa.co.in/b/mehfil-kitchen/q/${currentEstimate(w.repos, mailCustomer.id).quoteToken}`));
   assert.match(mail.html, /View and accept your quote/);
   const emailRow = w.repos.emails.listByEnquiry(mailCustomer.id).find((m) => m.type === 'followup');
   assert.equal(emailRow.status, 'accepted');
@@ -182,7 +182,7 @@ test('the draft is a fixed template: name, service, date and quote link, no AI c
   w.at(2);
   const draft = draftReminder(w.deps, w.repos.enquiries.get(e.id), state(w, e));
   assert.match(draft.text, /^Hi Meera, just checking in on your veg buffet quote from Mehfil Kitchen for Tue 15 Dec\./);
-  assert.ok(draft.text.includes('/q/'));
+  assert.ok(draft.text.includes('/b/mehfil-kitchen/q/'));
   assert.equal(w.deps.ai, undefined);
   await sendReminder(w.deps, e.id);
   assert.equal(w.repos.enquiries.get(e.id).aiRequestsUsed, 3);

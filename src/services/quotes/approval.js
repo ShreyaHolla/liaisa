@@ -59,7 +59,7 @@ function present(deps, enquiryId) {
   const estimate = currentEstimate(repos, enquiryId);
   const body = {
     enquiryStatus: enquiry.status, estimateStatus: estimate.status, channel: enquiry.preferredChannel,
-    quoteUrl: quoteUrl(config, estimate.quoteToken),
+    quoteUrl: quoteUrl(config, estimate.quoteToken, repos.business.slug),
   };
   if (enquiry.preferredChannel === 'whatsapp' && enquiry.customerPhone) body.whatsappUrl = waUrl(deps, enquiry, estimate);
   return body;
@@ -68,7 +68,7 @@ function present(deps, enquiryId) {
 function waUrl({ repos, config }, enquiry, estimate) {
   const pricing = repos.pricingConfigs.latestApproved().configJson;
   const business = repos.businessSettings.get();
-  const link = quoteUrl(config, estimate.quoteToken);
+  const link = quoteUrl(config, estimate.quoteToken, repos.business.slug);
   return buildWaLink(enquiry.customerPhone, whatsappText({ business, enquiry, estimate, pricing, link }));
 }
 
@@ -89,7 +89,7 @@ export async function sendQuoteEmail(deps, enquiryId) {
   sending.add(estimate.id);
   try {
     const business = repos.businessSettings.get();
-    const message = quoteEmail({ business, enquiry, estimate, link: quoteUrl(config, estimate.quoteToken) });
+    const message = quoteEmail({ business, enquiry, estimate, link: quoteUrl(config, estimate.quoteToken, repos.business.slug) });
     const ok = enquiry.customerEmail
       ? await sendLogged(deps, { enquiryId, type: 'estimate', to: enquiry.customerEmail, ...message })
       : false;

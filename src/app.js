@@ -4,18 +4,29 @@ import express from 'express';
 import helmet from 'helmet';
 import { publicRoutes } from './routes/public.js';
 import { contactRoutes } from './routes/contact.js';
-import { enquiryRoutes } from './routes/enquiries.js';
-import { quoteRoutes } from './routes/quotes.js';
+import { businessRoutes } from './routes/business.js';
 import { oneTapRoutes } from './routes/oneTap.js';
 import { ownerRoutes, ownerDisabled } from './routes/owner.js';
+import { signupRoutes } from './routes/signup.js';
+import { createSession } from './middleware/session.js';
+import { createRegistry } from './db/registry.js';
+import { DEMO_SLUG } from './db/repos/index.js';
 import { errorHandler } from './middleware/errors.js';
 import { buildDeps } from './container.js';
 import { buildAssets, cacheControlFor, REVALIDATE } from './assets.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-/** `deps` ({ contacts, repos, mailer, ai }) lets tests inject a fake mailer; default wires by env. */
+/**
+ * `deps` ({ contacts, registry, mailer, ai }) lets tests inject a fake mailer; default wires by env.
+ * Tests may pass `repos` (one seeded repo set) instead of a registry: it becomes the demo business.
+ */
 export function createApp(config, deps = buildDeps(config)) {
+  let { registry } = deps;
+  if (!registry) {
+    registry = createRegistry({ maxBusinesses: config.maxBusinesses });
+    registry.addDemo(config, deps.repos ? { repos: deps.repos } : {});
+  }
   const app = express();
   app.set('trust proxy', 1);
   app.set('view engine', 'ejs');
@@ -59,10 +70,15 @@ export function createApp(config, deps = buildDeps(config)) {
   app.use('/fonts', express.static(path.join(here, 'public', 'fonts'), staticOptions));
   app.use(publicRoutes(config));
   app.use(contactRoutes({ store: deps.contacts, mailer: deps.mailer, config }));
-  app.use(enquiryRoutes({ repos: deps.repos, ai: deps.ai, config, mailer: deps.mailer }));
-  app.use(quoteRoutes({ repos: deps.repos, config, mailer: deps.mailer }));
-  app.use(oneTapRoutes({ repos: deps.repos, config, mailer: deps.mailer }));
-  app.use('/owner', config.ownerEnabled ? ownerRoutes({ config, repos: deps.repos, mailer: deps.mailer, ai: deps.ai }) : ownerDisabled);
+  // Customer pages for one business: /b/:slug/enquire, /b/:slug/api/enquiries, /b/:slug/q/:token.
+  app.use('/b/:slug', businessRoutes({ registry, ai: deps.ai, config, mailer: deps.mailer }));
+  // The old single-business address keeps working: it goes to the demo business.
+  app.get('/enquire', (req, res) => res.redirect(302, `/b/${DEMO_SLUG}/enquire`));
+  app.use(oneTapRoutes({ registry, config, mailer: deps.mailer }));
+  // One session (and one store) for signup and the owner area.
+  const session = config.ownerEnabled ? createSession(config) : null;
+  app.use(config.ownerEnabled ? signupRoutes({ registry, session }) : (req, res, next) => (req.path === '/signup' ? ownerDisabled(req, res) : next()));
+  app.use('/owner', config.ownerEnabled ? ownerRoutes({ config, registry, mailer: deps.mailer, ai: deps.ai, session }) : ownerDisabled);
 
   app.use((req, res) => {
     res.status(404).type('text/plain').send('Not found');

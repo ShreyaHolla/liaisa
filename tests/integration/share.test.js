@@ -16,7 +16,7 @@ import { createEnquiryStore } from '../../src/db/repos/enquiries.js';
 import { createContactMessageStore } from '../../src/db/repos/contactMessages.js';
 import { qrSvg, enquiryUrl, waShareLink } from '../../src/services/share.js';
 
-const URL_OK = 'https://liaisa.co.in/enquire';
+const URL_OK = 'https://liaisa.co.in/b/mehfil-kitchen/enquire';
 const WA_OK = `https://wa.me/?text=${encodeURIComponent(`Tell us about your event and get a quote: ${URL_OK}`)}`;
 async function world(env = {}) {
   const ctx = setupOwner({ env });
@@ -33,7 +33,7 @@ async function emptyWorld() {
   const page = await request(app).get('/owner/login');
   const csrf = /name="_csrf" value="([^"]+)"/.exec(page.text)[1];
   const cookie = /liaisa\.sid=[^;]+/.exec((page.headers['set-cookie'] ?? []).join(';'))[0];
-  const res = await request(app).post('/owner/login').set('Cookie', cookie).type('form').send({ _csrf: csrf, password: 'correct horse battery' });
+  const res = await request(app).post('/owner/login').set('Cookie', cookie).type('form').send({ _csrf: csrf, email: 'owner@mehfilkitchen.example', password: 'correct horse battery' });
   const cookie2 = /liaisa\.sid=[^;]+/.exec((res.headers['set-cookie'] ?? []).join(';'))[0];
   return { app, get: (p) => request(app).get(p).set('Cookie', cookie2) };
 }
@@ -49,7 +49,7 @@ test('the card shows on Approvals and at the top of Setup, with the link built f
   }
   const setup = await ctx.o.get('/owner/setup');
   assert.ok(setup.text.indexOf('Share your enquiry link') < setup.text.indexOf('Your business'), 'it is at the top of Setup');
-  assert.equal(enquiryUrl({ baseUrl: 'https://liaisa.co.in/' }), URL_OK, 'a trailing slash is not doubled');
+  assert.equal(enquiryUrl({ baseUrl: 'https://liaisa.co.in/' }, 'mehfil-kitchen'), URL_OK, 'a trailing slash is not doubled');
 });
 
 test('Share on WhatsApp is a wa.me link with the message and the link', async () => {
@@ -72,7 +72,7 @@ test('the QR is generated here as inline SVG and encodes exactly the enquiry lin
   assert.notEqual(await qrSvg('https://other.example/enquire'), svg, 'a different link gives a different code');
   assert.ok(!/<script|style=|href=|xlink|<image|onload/i.test(svg), 'plain shapes only');
   assert.ok(!/<img[^>]*(qr|chart\.googleapis|api\.qrserver)/i.test(page.text), 'no image from another site');
-  assert.match(page.text, /aria-label="QR code for https:\/\/liaisa\.co\.in\/enquire"/);
+  assert.match(page.text, /aria-label="QR code for https:\/\/liaisa\.co\.in\/b\/mehfil-kitchen\/enquire"/);
 });
 
 test('Download QR is a plain link to an SVG file made by the server; it needs the owner login', async () => {
@@ -116,7 +116,7 @@ test('output is escaped: a BASE_URL with quotes, angle brackets and ampersands c
     assert.equal(page.status, 200, path);
     assert.ok(!page.text.includes('<img src=x onerror'), `${path}: raw tag`);
     assert.ok(!/value="https:\/\/shop\.example\/\?a=1&b=/.test(page.text), `${path}: raw ampersand and quote in the value`);
-    assert.match(page.text, /value="https:\/\/shop\.example\/\?a=1&amp;b=&lt;img src=x onerror=alert\(1\)&gt;&#34;&#39;\/enquire"/, path);
+    assert.match(page.text, /value="https:\/\/shop\.example\/\?a=1&amp;b=&lt;img src=x onerror=alert\(1\)&gt;&#34;&#39;\/b\/mehfil-kitchen\/enquire"/, path);
     assert.match(page.text, /aria-label="QR code for https:\/\/shop\.example\/\?a=1&amp;b=&lt;img/, path);
   }
   const href = /<a class="btn secondary" href="([^"]+)" target="_blank"/.exec((await ctx.o.get('/owner')).text)[1];

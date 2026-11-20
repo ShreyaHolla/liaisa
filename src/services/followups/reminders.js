@@ -80,7 +80,7 @@ export function draftReminder({ repos, config }, enquiry, state) {
   const requirements = enquiry.requirementsJson ?? {};
   const service = pricing.services.find((s) => s.id === requirements.service_id)?.name;
   const date = requirements.event_date ? formatDate(requirements.event_date) : null;
-  const link = quoteUrl(config, estimate.quoteToken);
+  const link = quoteUrl(config, estimate.quoteToken, repos.business.slug);
   const name = enquiry.customerName.split(' ')[0];
   const second = state.sentCount >= 1;
   const valid = estimate.validUntil ? formatDate(estimate.validUntil) : null;

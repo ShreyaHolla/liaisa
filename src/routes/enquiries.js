@@ -5,7 +5,6 @@ import { ulid } from '../util/ulid.js';
 import { formatDate } from '../util/formatDate.js';
 import { unitLabel, unitNoun } from '../util/format.js';
 import { wantsJson, errorBody } from '../middleware/errors.js';
-import { enquiryLimiter } from '../middleware/rateLimits.js';
 import { makeStartSchema, replySchema, requirementsSchema, fieldErrors } from '../services/enquiries/schema.js';
 import { startEnquiry, replyToEnquiry, submitForm, presentResult, understoodOf } from '../services/enquiries/enquiryService.js';
 
@@ -19,8 +18,10 @@ function examplePrompt(pricing) {
   return `e.g. ${service.name} for 40 ${unitNoun(service)} on 13 Dec${area ? `, in ${area}` : ''}`;
 }
 
-export function enquiryRoutes({ repos, ai, config, mailer = null }) {
+/** `limiters` ({ start, reply }) are shared by every business, so a limit is per IP for the whole platform. */
+export function enquiryRoutes({ repos, ai, config, mailer = null, limiters }) {
   const router = Router();
+  const base = `/b/${repos.business.slug}`;
   const body = [express.json({ limit: '20kb' }), express.urlencoded({ extended: false, limit: '20kb' })];
   const deps = () => ({ repos, ai, config, mailer });
 
@@ -29,7 +30,7 @@ export function enquiryRoutes({ repos, ai, config, mailer = null }) {
     const biz = repos.businessSettings.get() ?? { businessName: 'Liaisa', tagline: '' };
     const pricing = repos.pricingConfigs.latestApproved()?.configJson ?? { services: [], addons: [], travel: { areas: {} } };
     return {
-      fmtDate: formatDate, unitLabel, biz,
+      fmtDate: formatDate, unitLabel, biz, base,
       example: examplePrompt(pricing), services: pricing.services, addons: pricing.addons, areas: Object.keys(pricing.travel.areas),
       view: 'start', publicId: null, rawText: '', firstName: '', replyChannel: 'email',
       question: '', message: '', understood: null, prefill: {}, errors: {}, values: {}, notice: '',
@@ -73,16 +74,22 @@ export function enquiryRoutes({ repos, ai, config, mailer = null }) {
     }
     if (err.status === 409) {
       if (wantsJson(req)) return res.status(409).json(errorBody('conflict', err.message));
-      return res.redirect(303, '/enquire');
+      return res.redirect(303, `${base}/enquire`);
     }
     return next(err);
   }
 
   const startSchema = makeStartSchema(config.whatsappCountryCode);
 
+  // The shared limiters answer through this business's page.
+  router.use((req, res, next) => {
+    req.limitedHtml = renderLimited;
+    next();
+  });
+
   router.get('/enquire', (req, res) => res.render('pages/enquire', model()));
 
-  router.post('/api/enquiries', enquiryLimiter({ limit: 3, html: renderLimited }), ...body, async (req, res, next) => {
+  router.post('/api/enquiries', limiters.start, ...body, async (req, res, next) => {
     try {
       const input = req.body ?? {};
       // Honeypot: look successful, save and call nothing.
@@ -101,7 +108,7 @@ export function enquiryRoutes({ repos, ai, config, mailer = null }) {
     }
   });
 
-  router.post('/api/enquiries/:publicId/reply', enquiryLimiter({ limit: 10, html: renderLimited }), ...body, async (req, res, next) => {
+  router.post('/api/enquiries/:publicId/reply', limiters.reply, ...body, async (req, res, next) => {
     try {
       const parsed = replySchema.safeParse(req.body ?? {});
       if (!parsed.success) {

@@ -22,7 +22,7 @@ test('TC-APR-01 approve: approved, 43-char base64url token, valid for 7 days (em
   assert.match(est.quoteToken, /^[A-Za-z0-9_-]{43}$/);
   assert.equal(est.validUntil, dateAfter(new Date(), 7));
   assert.ok(est.approvedAt);
-  assert.equal(res.body.quoteUrl, `https://liaisa.co.in/q/${est.quoteToken}`);
+  assert.equal(res.body.quoteUrl, `https://liaisa.co.in/b/mehfil-kitchen/q/${est.quoteToken}`);
   assert.equal(ctx.repos.emails.listByEnquiry(kavita.id).length, 0);
 });
 
@@ -155,8 +155,8 @@ test('TC-EML-01 approve for an email customer: one email with items, total, vali
   assert.equal(mail.from, MAIL_FROM);
   assert.equal(mail.to, 'kavita@example.test');
   assert.match(mail.subject, /^Your quote from Mehfil Kitchen: ₹\d/);
-  assert.ok(mail.text.includes(`https://liaisa.co.in/q/${est.quoteToken}`));
-  assert.ok(mail.html.includes(`https://liaisa.co.in/q/${est.quoteToken}`));
+  assert.ok(mail.text.includes(`https://liaisa.co.in/b/mehfil-kitchen/q/${est.quoteToken}`));
+  assert.ok(mail.html.includes(`https://liaisa.co.in/b/mehfil-kitchen/q/${est.quoteToken}`));
   assert.ok(mail.text.includes('Veg buffet') && mail.text.includes('Dessert counter'));
   assert.match(mail.text, /Total: ₹[\d,]+/);
   assert.match(mail.text, /Valid until/);
@@ -218,7 +218,7 @@ test('email off (MAIL_ENABLED=false): approving skips sending and the page offer
   assert.equal(res.status, 303);
   const page = await o.get(res.headers.location);
   assert.match(page.text, /Email is switched off/);
-  assert.match(page.text, /https:\/\/liaisa\.co\.in\/q\//);
+  assert.match(page.text, /https:\/\/liaisa\.co\.in\/b\/mehfil-kitchen\/q\//);
   assert.equal((await o.postJson(`/owner/enquiries/${kavita.id}/retry-send`)).status, 409);
 });
 
@@ -227,7 +227,7 @@ test('owner notice: an enquiry that becomes ready emails the owner; nothing is s
   for (const mail of ['fake', 'off']) {
     const ctx = setupOwner({ mail });
     const e = ctx.repos.enquiries.create({ customerName: 'Tara Sen', customerEmail: 't@example.test', preferredChannel: 'email', rawText: 'Veg lunch for 40', status: 'collecting' });
-    const res = await request(ctx.app).post(`/api/enquiries/${e.publicId}/form`).send(FULL);
+    const res = await request(ctx.app).post(`/b/mehfil-kitchen/api/enquiries/${e.publicId}/form`).send(FULL);
     assert.equal(res.body.outcome, 'ready');
     await new Promise((r) => setImmediate(r));
     if (mail === 'off') continue;
@@ -242,7 +242,7 @@ test('owner notice: an enquiry that becomes ready emails the owner; nothing is s
 test('owner notice failing never breaks the customer request', async () => {
   const ctx = setupOwner({ mail: 'fail' });
   const e = ctx.repos.enquiries.create({ customerName: 'Tara Sen', customerEmail: 't@example.test', preferredChannel: 'email', rawText: 'Veg lunch for 40', status: 'collecting' });
-  const res = await request(ctx.app).post(`/api/enquiries/${e.publicId}/form`).send({ service_id: 'veg_buffet', quantity: 40, event_date: '2026-12-13', location: 'Koramangala' });
+  const res = await request(ctx.app).post(`/b/mehfil-kitchen/api/enquiries/${e.publicId}/form`).send({ service_id: 'veg_buffet', quantity: 40, event_date: '2026-12-13', location: 'Koramangala' });
   assert.equal(res.status, 200);
   assert.equal(res.body.outcome, 'ready');
 });

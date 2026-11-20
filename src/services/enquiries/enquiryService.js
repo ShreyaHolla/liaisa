@@ -35,8 +35,8 @@ function announceReady(deps, enquiryId) {
       const secret = config.sessionSecret;
       const base = config.baseUrl.replace(/\/$/, '');
       const links = secret && estimate ? {
-        approve: `${base}/a/${signLink(secret, { enquiryId, version: estimate.version, action: 'approve' })}`,
-        decline: `${base}/a/${signLink(secret, { enquiryId, version: estimate.version, action: 'decline' })}`,
+        approve: `${base}/a/${signLink(secret, { businessId: repos.business.id, enquiryId, version: estimate.version, action: 'approve' })}`,
+        decline: `${base}/a/${signLink(secret, { businessId: repos.business.id, enquiryId, version: estimate.version, action: 'decline' })}`,
       } : null;
       await notifyOwner(deps, enquiryId, ownerReadyEmail({
         config, enquiry, pricing, links, total: estimate?.total ?? null, warnings: estimate?.warningsJson?.length ?? 0,

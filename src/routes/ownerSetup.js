@@ -6,6 +6,9 @@ import { makeSetupSchema, MAX_SERVICES, MAX_AREAS } from '../services/setup/sche
 import { currentSetup, saveSetup, resetToDemo } from '../services/setup/businessSetup.js';
 import { flatErrors } from '../services/quotes/schema.js';
 import { makeShare } from '../services/share.js';
+import { limitsOf, businessAiToday } from '../services/tenants/limits.js';
+import { draftsToday } from '../services/clients/outreach.js';
+import { runsToday, searchesToday } from '../services/clients/discovery.js';
 
 const NOTICES = {
   saved: ['ok', 'Saved. New enquiries will use these details. Quotes already made keep their numbers.'],
@@ -38,7 +41,7 @@ export function parseSetupBody(body) {
 export function ownerSetupRoutes({ repos, config }) {
   const router = Router();
   const schema = makeSetupSchema(config.whatsappCountryCode);
-  const getShare = makeShare(config);
+  const getShare = makeShare(config, repos.business.slug);
   const businessName = () => repos.businessSettings.get()?.businessName ?? 'Liaisa';
 
   async function render(req, res, status, values, errors = {}) {
@@ -49,8 +52,18 @@ export function ownerSetupRoutes({ repos, config }) {
       services: blanks(values.services, MAX_SERVICES, () => ({ id: '', name: '', price: '', minQty: '', maxQty: '', unitLabel: 'Number of guests' })),
       areas: blanks(values.areas, MAX_AREAS, () => ({ name: '', fee: '' })),
     };
-    const n = typeof req.query.n === 'string' && Object.hasOwn(NOTICES, req.query.n) ? NOTICES[req.query.n] : null;
+    let n = typeof req.query.n === 'string' && Object.hasOwn(NOTICES, req.query.n) ? NOTICES[req.query.n] : null;
+    if (n === NOTICES.reset && !repos.business.isDemo) n = ['ok', 'Reset to the starter services and areas.'];
+    const now = new Date();
+    const limits = limitsOf(repos, config);
+    const usage = {
+      requests: businessAiToday(repos, now), requestLimit: limits.aiRequests,
+      drafts: draftsToday(repos, now), draftLimit: limits.drafts,
+      runs: runsToday(repos, now), runLimit: limits.discoveryRuns, searches: searchesToday(repos, now),
+      aiOn: config.aiEnabled,
+    };
     res.status(status).render('pages/owner-setup', {
+      usage, isDemo: repos.business.isDemo, onboarding: Boolean(repos.businessSettings.get()?.onboarding), slug: repos.business.slug,
       businessName: businessName(), csrfToken: res.locals.csrfToken, v: view, errors, notice: n, active: 'setup', share, noEnquiries: repos.enquiries.list().length === 0,
       limits: { services: MAX_SERVICES, areas: MAX_AREAS },
     });
@@ -76,7 +89,7 @@ export function ownerSetupRoutes({ repos, config }) {
   });
 
   router.post('/setup/reset', (req, res) => {
-    resetToDemo(repos);
+    resetToDemo(repos); // the demo business goes back to Mehfil Kitchen; any other business goes back to the starter prices
     res.redirect(303, '/owner/setup?n=reset');
   });
 

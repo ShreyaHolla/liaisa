@@ -10,7 +10,27 @@
   <% if (notice) { %><p class="banner tone-done" role="status"><%= notice[1] %></p><% } %>
   <% if (Object.keys(errors).length) { %><p class="banner tone-problem" role="alert">Some details need another look. They are marked below.</p><% } %>
   <% if (errors._form) { %><p class="banner tone-problem" role="alert"><%= errors._form %></p><% } %>
+  <% if (onboarding) { %>
+    <section class="card" aria-labelledby="start-h">
+      <h2 id="start-h">Welcome. Two things to do first</h2>
+      <ol class="small">
+        <li><strong>Set your prices.</strong> Replace the two example services and two areas below with your own, then save.</li>
+        <li><strong>Share your link.</strong> Copy it, send it on WhatsApp or print the QR code below.</li>
+      </ol>
+    </section>
+  <% } %>
   <%- include('../partials/share-card', { share: share, prominent: noEnquiries }) %>
+
+  <section class="card" aria-labelledby="usage-h">
+    <h2 id="usage-h">AI use today</h2>
+    <% if (!usage.aiOn) { %><p class="small">AI is switched off, so customers fill in the form instead.</p><% } %>
+    <ul class="small">
+      <li>AI requests: <%= usage.requests %> of <%= usage.requestLimit %></li>
+      <li>Message drafts: <%= usage.drafts %> of <%= usage.draftLimit %></li>
+      <li>Searches for clients: <%= usage.runs %> of <%= usage.runLimit %> (<%= usage.searches %> web searches)</li>
+    </ul>
+    <p class="small slate">When a limit is reached, enquiries switch to the simple form and everything keeps working. Limits reset each day.</p>
+  </section>
 
   <form method="post" action="/owner/setup" novalidate>
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -148,8 +168,10 @@
   <form method="post" action="/owner/setup/reset" class="section">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <button class="btn danger-text" type="submit"
-      data-confirm="Reset to the demo business? Your name, services, areas and fees will be replaced with the Mehfil Kitchen defaults. Quotes already made keep their numbers."
+      <% if (isDemo) { %>data-confirm="Reset to the demo business? Your name, services, areas and fees will be replaced with the Mehfil Kitchen defaults. Quotes already made keep their numbers."
       data-confirm-label="Reset to demo business">Reset to demo business</button>
+      <% } else { %>data-confirm="Reset the services and areas to the starter examples? Your business name and details stay. Quotes already made keep their numbers."
+      data-confirm-label="Reset to starter prices">Reset to starter prices</button><% } %>
   </form>
   <form method="post" action="/owner/logout">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">

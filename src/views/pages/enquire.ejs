@@ -9,7 +9,7 @@
 
       <% if (view === 'start') { %>
         <h1 tabindex="-1" data-focus>Tell us what you need</h1>
-        <form method="post" action="/api/enquiries" class="card" data-enhance novalidate>
+        <form method="post" action="<%= base %>/api/enquiries" class="card" data-enhance novalidate>
           <div class="field">
             <label for="description">What do you need?</label>
             <textarea id="description" name="description" rows="5" maxlength="1000" data-count="count" placeholder="<%= example %>"<% if (errors.description) { %> aria-invalid="true" aria-describedby="error-description"<% } %>><%= values.description || '' %></textarea>
@@ -52,7 +52,7 @@
           <p class="bubble you"><span class="who">You</span><%= rawText %></p>
           <p class="bubble liaisa"><span class="who">Liaisa for <%= biz.businessName %></span><%= question %></p>
         </div>
-        <form method="post" action="/api/enquiries/<%= publicId %>/reply" class="card" data-enhance novalidate>
+        <form method="post" action="<%= base %>/api/enquiries/<%= publicId %>/reply" class="card" data-enhance novalidate>
           <div class="field">
             <label for="answer">Your answer</label>
             <textarea id="answer" name="answer" rows="3" maxlength="1000"<% if (errors.answer) { %> aria-invalid="true" aria-describedby="error-answer"<% } %>><%= values.answer || '' %></textarea>
@@ -82,7 +82,7 @@
       <% } else if (view === 'fallback') { %>
         <% const pre = prefill || {}; const preAddons = [].concat(pre.addon_ids || []); const known = areas.includes(pre.location); %>
         <h1 tabindex="-1" data-focus>Tell us a few details</h1>
-        <form method="post" action="/api/enquiries/<%= publicId %>/form" class="card" data-enhance novalidate>
+        <form method="post" action="<%= base %>/api/enquiries/<%= publicId %>/form" class="card" data-enhance novalidate>
           <div class="field">
             <label for="service_id">Service</label>
             <select id="service_id" name="service_id"<% if (errors.service_id) { %> aria-invalid="true" aria-describedby="error-service_id"<% } %>>

@@ -4,6 +4,7 @@
 import { ValidationError } from '../../errors.js';
 import { normalisePhone } from '../enquiries/schema.js';
 import { DEMO_BUSINESS, DEMO_PRICING_CONFIG } from '../../seed.js';
+import { STARTER_PRICING } from './starter.js';
 import { slugify } from './schema.js';
 import { unitLabel } from '../../util/format.js';
 
@@ -62,11 +63,20 @@ export function saveSetup(repos, input, countryCode, now = new Date()) {
     followupAfterDays: input.followupAfterDays,
     bulkApproveLimit: input.bulkApproveLimit ?? null, autoApprove: input.autoApprove,
     ...(input.city ? { city: input.city } : {}), // blank keeps the current city
+    onboarding: false, // the signup checklist is done once they have saved their details
   });
 }
 
-/** "Reset to demo business": Mehfil Kitchen's name, prices and areas. Owner email and templates stay. */
+/**
+ * "Reset": the demo business goes back to Mehfil Kitchen's name, prices and areas. Any other business keeps its
+ * name and details and goes back to the starter services and areas, never to another business's data.
+ * Owner email and templates stay.
+ */
 export function resetToDemo(repos, now = new Date()) {
+  if (!repos.business.isDemo) {
+    repos.pricingConfigs.publish(structuredClone(STARTER_PRICING), now);
+    return;
+  }
   repos.pricingConfigs.publish(structuredClone(DEMO_PRICING_CONFIG), now);
   repos.businessSettings.save({ ...DEMO_BUSINESS });
 }

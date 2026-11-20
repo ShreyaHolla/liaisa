@@ -16,7 +16,7 @@ function edit(repos, over = {}) {
   saveSetup(repos, input, '91');
 }
 const systemText = (ai) => ai.calls[0].system[0].text;
-const post = (app, body = START) => request(app).post('/api/enquiries').send(body);
+const post = (app, body = START) => request(app).post('/b/mehfil-kitchen/api/enquiries').send(body);
 
 test('the agent prompt includes the edited business name, services and areas, not the old ones', async () => {
   const { app, repos, ai } = setup({ steps: scenarios.needs_info() });
@@ -48,16 +48,16 @@ test('with the demo business the prompt examples read as before', async () => {
 test('the enquiry form label follows the selected service’s unit label (default: Number of guests)', async () => {
   const { app, repos } = setup({ env: { AI_ENABLED: 'false' } });
   const html = (res) => res.text;
-  const start = await request(app).post('/api/enquiries').set('Accept', 'text/html').type('form').send({ ...START, name: 'Meera' });
+  const start = await request(app).post('/b/mehfil-kitchen/api/enquiries').set('Accept', 'text/html').type('form').send({ ...START, name: 'Meera' });
   assert.match(html(start), /id="quantity-label">Number of guests</);
   assert.match(html(start), /<option value="live_counter" data-unit="Hours"/);
   assert.ok(!/hours for live counters/i.test(html(start)));
-  assert.match((await request(app).get('/enquire')).text, /placeholder="e\.g\. Veg buffet for 40 guests on 13 Dec, in Koramangala"/);
+  assert.match((await request(app).get('/b/mehfil-kitchen/enquire')).text, /placeholder="e\.g\. Veg buffet for 40 guests on 13 Dec, in Koramangala"/);
 
   edit(repos, { services: [{ id: 'veg_buffet', name: 'Veg buffet', price: '450', minQty: '20', maxQty: '', unitLabel: 'Plates' }] });
-  const again = await request(app).post('/api/enquiries').set('Accept', 'text/html').type('form').send({ ...START, name: 'Meera' });
+  const again = await request(app).post('/b/mehfil-kitchen/api/enquiries').set('Accept', 'text/html').type('form').send({ ...START, name: 'Meera' });
   assert.match(html(again), /data-unit="Plates"/);
-  assert.match((await request(app).get('/enquire')).text, /placeholder="e\.g\. Veg buffet for 40 plates on 13 Dec/);
+  assert.match((await request(app).get('/b/mehfil-kitchen/enquire')).text, /placeholder="e\.g\. Veg buffet for 40 plates on 13 Dec/);
 });
 
 test('a service with no unit label falls back to the pricing unit (per-hour services say Hours)', async () => {
@@ -65,7 +65,7 @@ test('a service with no unit label falls back to the pricing unit (per-hour serv
   const cfg = structuredClone(repos.pricingConfigs.latestApproved().configJson);
   for (const s of cfg.services) delete s.unit_label;
   repos.pricingConfigs.publish(cfg);
-  const res = await request(app).post('/api/enquiries').set('Accept', 'text/html').type('form').send({ ...START, name: 'Meera' });
+  const res = await request(app).post('/b/mehfil-kitchen/api/enquiries').set('Accept', 'text/html').type('form').send({ ...START, name: 'Meera' });
   assert.match(res.text, /<option value="live_counter" data-unit="Hours"/);
   assert.match(res.text, /<option value="veg_buffet" data-unit="Number of guests"/);
 });
@@ -97,7 +97,7 @@ test('today or a later date is accepted; a past date answered with a future one 
   const { app, repos } = setup({ steps: [...scenarios.ready({ service_id: 'veg_buffet', quantity: 40, event_date: '2020-03-05', location: 'Koramangala' }), ...scenarios.ready({ service_id: 'veg_buffet', quantity: 40, event_date: '2099-12-13', location: 'Koramangala' })] });
   const first = await post(app);
   assert.equal(first.body.outcome, 'needs_info');
-  const reply = await request(app).post(`/api/enquiries/${first.body.publicId}/reply`).send({ answer: '13 Dec 2099' });
+  const reply = await request(app).post(`/b/mehfil-kitchen/api/enquiries/${first.body.publicId}/reply`).send({ answer: '13 Dec 2099' });
   assert.equal(reply.body.outcome, 'ready');
   assert.equal(newest(repos).requirementsJson.event_date, '2099-12-13');
 });
@@ -105,7 +105,7 @@ test('today or a later date is accepted; a past date answered with a future one 
 test('the fallback form refuses a past date with a message on the date field', async () => {
   const { app } = setup({ env: { AI_ENABLED: 'false' } });
   const start = await post(app);
-  const res = await request(app).post(`/api/enquiries/${start.body.publicId}/form`).send({ service_id: 'veg_buffet', quantity: 40, event_date: '2020-03-05', location: 'Koramangala' });
+  const res = await request(app).post(`/b/mehfil-kitchen/api/enquiries/${start.body.publicId}/form`).send({ service_id: 'veg_buffet', quantity: 40, event_date: '2020-03-05', location: 'Koramangala' });
   assert.equal(res.status, 400);
   assert.match(res.body.error.fields.event_date, /already passed/);
 });
@@ -122,7 +122,7 @@ test('the currency symbol is display only: emails, quote page and owner pages us
   assert.match(mail.subject, /^Your quote from Mehfil Kitchen: Rs\.[\d,]+$/);
   assert.ok(!mail.text.includes('₹') && !mail.html.includes('₹'));
   const token = ctx.repos.estimates.listByEnquiry(kavita.id)[0].quoteToken;
-  const page = await request(ctx.app).get(`/q/${token}`);
+  const page = await request(ctx.app).get(`/b/mehfil-kitchen/q/${token}`);
   assert.match(page.text, /Rs\.[\d,]+/);
   assert.ok(!page.text.includes('₹'));
   assert.match((await o.get(`/owner/enquiries/${kavita.id}`)).text, /Rs\.[\d,]+/);
@@ -134,9 +134,9 @@ test('the business WhatsApp number shows on the quote page only when set', async
   const kavita = byName(ctx.repos, 'Kavita Reddy');
   await o.postJson(`/owner/enquiries/${kavita.id}/approve`, { estimateVersion: 1 });
   const token = ctx.repos.estimates.listByEnquiry(kavita.id)[0].quoteToken;
-  assert.ok(!(await request(ctx.app).get(`/q/${token}`)).text.includes('wa.me'));
+  assert.ok(!(await request(ctx.app).get(`/b/mehfil-kitchen/q/${token}`)).text.includes('wa.me'));
   edit(ctx.repos, { whatsappNumber: '98450 12345' });
-  const page = await request(ctx.app).get(`/q/${token}`);
+  const page = await request(ctx.app).get(`/b/mehfil-kitchen/q/${token}`);
   assert.match(page.text, /href="https:\/\/wa\.me\/919845012345">Message Mehfil Kitchen on WhatsApp</);
 });
 

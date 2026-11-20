@@ -16,7 +16,7 @@ test('TC-WA-02 short numbers and letters are rejected', () => {
 });
 
 test('TC-WA-03 link: wa.me with the digits, encoded text, line breaks and ₹ survive decoding', () => {
-  const text = 'Hi Priya,\nTotal: ₹18,900 & more?\nhttps://liaisa.co.in/q/abc';
+  const text = 'Hi Priya,\nTotal: ₹18,900 & more?\nhttps://liaisa.co.in/b/mehfil-kitchen/q/abc';
   const url = buildWaLink('+919845012345', text);
   assert.match(url, /^https:\/\/wa\.me\/919845012345\?text=/);
   assert.ok(url.includes('%0A') && !url.includes('\n') && !url.includes(' '));
@@ -34,7 +34,7 @@ test('TC-WA-03 the message has the right total and quote link', async () => {
   const text = decodeURIComponent(res.body.whatsappUrl.split('?text=')[1]);
   const token = estimateOf(ctx.repos, e).quoteToken;
   assert.match(text, /^Hi Priya, here's your quote from Mehfil Kitchen for 40 guests on Tue 15 Dec: ₹18,900\./);
-  assert.ok(text.endsWith(`https://liaisa.co.in/q/${token}`));
+  assert.ok(text.endsWith(`https://liaisa.co.in/b/mehfil-kitchen/q/${token}`));
 });
 
 test('TC-WA-04 the button shows only after approval, never for a draft; the endpoint refuses drafts', async () => {

@@ -37,10 +37,10 @@ const cookieOf = (res) => /liaisa\.sid=[^;]+/.exec((res.headers['set-cookie'] ??
 const csrfOf = (res) => /name="_csrf" value="([^"]+)"/.exec(res.text)?.[1];
 
 /** Log in; returns helpers that carry the session cookie and CSRF token. */
-export async function login(app) {
+export async function login(app, { email = OWNER_EMAIL, password = PASSWORD } = {}) {
   const page = await request(app).get('/owner/login');
   const res = await request(app).post('/owner/login').set('Cookie', cookieOf(page)).type('form')
-    .send({ _csrf: csrfOf(page), password: PASSWORD });
+    .send({ _csrf: csrfOf(page), email, password });
   if (res.status !== 302) throw new Error(`login failed: ${res.status}`);
   const cookie = cookieOf(res);
   const home = await request(app).get('/owner').set('Cookie', cookie);

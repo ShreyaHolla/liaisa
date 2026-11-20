@@ -54,8 +54,8 @@ test('draft (mock AI): editable, from the facts only, no prices, with only the b
   assert.equal(res.body.channel, 'email');
   assert.equal(res.body.source, 'ai');
   assert.match(res.body.message, /^Hi Sanjay, this is Mehfil Kitchen\. We remember your veg buffet enquiry for your anniversary on Sun 20 Dec\./);
-  assert.ok(res.body.message.endsWith('You can reach us any time: https://liaisa.co.in/enquire'));
-  assert.ok(!/₹|\bRs\b|price|discount|\d{3,}/i.test(res.body.message.replace('https://liaisa.co.in/enquire', '')));
+  assert.ok(res.body.message.endsWith('You can reach us any time: https://liaisa.co.in/b/mehfil-kitchen/enquire'));
+  assert.ok(!/₹|\bRs\b|price|discount|\d{3,}/i.test(res.body.message.replace('https://liaisa.co.in/b/mehfil-kitchen/enquire', '')));
   assert.equal(ctx.mailer.sent.length, 0, 'drafting sends nothing');
   const [call] = ctx.ai.calls;
   assert.equal(call.purpose, 'outreach');
@@ -90,7 +90,7 @@ test('approval is required: nothing is sent until the owner approves the text, a
   assert.equal((await send(ctx.o, 9999, 'Hello there friend')).status, 404);
   assert.equal((await send(ctx.o, d.body.draftId, '')).status, 400);
   assert.equal(ctx.mailer.sent.length, 0);
-  const edited = 'Hi Sanjay, thank you for choosing us. Do reply if we can help with your next event. See https://liaisa.co.in/enquire';
+  const edited = 'Hi Sanjay, thank you for choosing us. Do reply if we can help with your next event. See https://liaisa.co.in/b/mehfil-kitchen/enquire';
   const ok = await send(ctx.o, d.body.draftId, edited);
   assert.deepEqual(ok.body, { channel: 'email', status: 'sent' });
   assert.equal(ctx.mailer.sent.length, 1);
@@ -181,8 +181,8 @@ test('do not contact: a customer who declines with the box ticked is never draft
   const ctx = await world();
   const rohan = byName(ctx.repos, 'Rohan Iyer');
   const token = ctx.repos.estimates.listByEnquiry(rohan.id)[0].quoteToken;
-  assert.match((await request(ctx.app).get(`/q/${token}`)).text, /name="doNotContact"/);
-  await request(ctx.app).post(`/q/${token}/decline`).type('form').send({ doNotContact: 'on' });
+  assert.match((await request(ctx.app).get(`/b/mehfil-kitchen/q/${token}`)).text, /name="doNotContact"/);
+  await request(ctx.app).post(`/b/mehfil-kitchen/q/${token}/decline`).type('form').send({ doNotContact: 'on' });
   assert.equal(ctx.repos.enquiries.get(rohan.id).doNotContact, true);
   const page = await ctx.o.get('/owner/clients');
   assert.match(page.text, /Rohan Iyer/);
@@ -195,7 +195,7 @@ test('do not contact: a customer who declines with the box ticked is never draft
   // A plain decline (box not ticked) leaves the flag off.
   const fatima = byName(ctx.repos, 'Fatima Sheikh');
   const t2 = ctx.repos.estimates.listByEnquiry(fatima.id)[0].quoteToken;
-  await request(ctx.app).post(`/q/${t2}/decline`).set('Accept', 'application/json').send({});
+  await request(ctx.app).post(`/b/mehfil-kitchen/q/${t2}/decline`).set('Accept', 'application/json').send({});
   assert.equal(ctx.repos.enquiries.get(fatima.id).doNotContact, false);
 });
 
@@ -265,7 +265,7 @@ test('leads: validation, one contact each, and drafts that use the owner’s one
   assert.match(d.body.message, /^Hi Dev, this is Mehfil Kitchen\. We cater for events/);
   assert.ok(ctx.ai.calls[0].messages[0].content.includes('HR manager at an IT firm'), 'the note is given to the model as data');
   assert.ok(!JSON.stringify(ctx.ai.calls[0]).includes('dev@example.test'), 'never the contact detail');
-  assert.equal((await send(ctx.o, d.body.draftId, 'Hi Dev, hope you are well. Happy to help with team lunches. https://liaisa.co.in/enquire')).body.status, 'sent');
+  assert.equal((await send(ctx.o, d.body.draftId, 'Hi Dev, hope you are well. Happy to help with team lunches. https://liaisa.co.in/b/mehfil-kitchen/enquire')).body.status, 'sent');
   assert.equal(ctx.mailer.sent[0].to, 'dev@example.test');
   const waDraft = await draft(ctx.o, 'lead', String(ctx.repos.leads.all()[1].id));
   assert.equal(waDraft.body.channel, 'whatsapp');
@@ -283,7 +283,7 @@ test('links: only the business’s own link may be sent; output is escaped', asy
   assert.match(html.text, /Only your own enquiry or quote link can go in a message\./);
   assert.ok(html.text.includes('&lt;b&gt;see&lt;/b&gt;'), 'what the owner typed comes back escaped');
   assert.equal(ctx.mailer.sent.length, 0);
-  assert.equal((await send(ctx.o, d.body.draftId, 'Hi Sanjay, see https://liaisa.co.in/q/abc for your quote')).status, 200);
+  assert.equal((await send(ctx.o, d.body.draftId, 'Hi Sanjay, see https://liaisa.co.in/b/mehfil-kitchen/q/abc for your quote')).status, 200);
   const lead = await ctx.o.postJson('/owner/clients/leads', { name: '<script>alert(1)</script>', contact: 'x@example.test', note: '<img src=x onerror=alert(1)>' });
   const page = await ctx.o.get('/owner/clients?tab=leads');
   assert.ok(!page.text.includes('<script>alert(1)') && !page.text.includes('<img src=x'));

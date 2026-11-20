@@ -46,7 +46,7 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
   const router = Router();
   const deps = () => ({ repos, config, mailer });
   const businessName = () => repos.businessSettings.get()?.businessName ?? 'Liaisa';
-  const getShare = makeShare(config);
+  const getShare = makeShare(config, repos.business.slug);
   const money = (n) => inr(n, repos.businessSettings.get()?.currencySymbol ?? '₹'); // symbol is display only
 
   const notice = (req) => {
@@ -150,7 +150,7 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
   function renderDetail(req, res, status = 200, edit = { errors: {}, values: {} }) {
     const model = enquiryDetail(deps(), req.enquiryId);
     if (!model) return notFound(req, res);
-    const link = model.estimate?.quoteToken ? quoteUrl(config, model.estimate.quoteToken) : null;
+    const link = model.estimate?.quoteToken ? quoteUrl(config, model.estimate.quoteToken, repos.business.slug) : null;
     return res.status(status).render('pages/owner-enquiry', {
       active: 'approvals', pending: dashboardSummary(deps()).needsYou.filter((n) => ['approval', 'review'].includes(n.kind)).length,
       ...model, businessName: businessName(), csrfToken: res.locals.csrfToken, inr: money, formatDate, timeAgo, unitLabel, edit,

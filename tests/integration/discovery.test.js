@@ -193,7 +193,7 @@ test('links Claude puts in a draft are stripped; only the business’s own enqui
   const d = await ctx.o.postJson('/owner/clients/draft', { type: 'lead', ref: String(org.id) });
   assert.equal(d.status, 201);
   assert.ok(!/evil\.example|other\.example/.test(d.body.message));
-  assert.deepEqual(d.body.message.match(/https?:\/\/\S+/g), ['https://liaisa.co.in/enquire']);
+  assert.deepEqual(d.body.message.match(/https?:\/\/\S+/g), ['https://liaisa.co.in/b/mehfil-kitchen/enquire']);
   assert.equal(d.body.source, 'ai');
 });
 

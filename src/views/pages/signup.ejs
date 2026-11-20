@@ -1,0 +1,50 @@
+<%
+  var err = function (k) { return errors[k] ? '<p class="field-error" id="error-' + k + '">' + errors[k].replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</p>' : ''; };
+  var bad = function (k) { return errors[k] ? ' aria-invalid="true" aria-describedby="error-' + k + '"' : ''; };
+%>
+<%- include('../partials/head', { title: 'Sign up your business · Liaisa' }) %>
+<body>
+  <%- include('../partials/site-bar', { brand: 'Liaisa', links: false }) %>
+  <main class="container container--narrow">
+    <h1>Sign up your business</h1>
+    <p class="banner tone-done" role="note">Demo environment: data may reset.</p>
+    <% if (notice) { %><p class="banner tone-problem" role="alert"><%= notice %></p><% } %>
+    <form method="post" action="/signup" class="card" novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="businessName">Business name</label>
+        <input id="businessName" name="businessName" type="text" maxlength="80" autocomplete="organization" required value="<%= values.businessName || '' %>"<%- bad('businessName') %>>
+        <%- err('businessName') %>
+      </div>
+      <div class="field">
+        <label for="ownerName">Your name</label>
+        <input id="ownerName" name="ownerName" type="text" maxlength="80" autocomplete="name" required value="<%= values.ownerName || '' %>"<%- bad('ownerName') %>>
+        <%- err('ownerName') %>
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" maxlength="254" autocomplete="username" required value="<%= values.email || '' %>"<%- bad('email') %>>
+        <%- err('email') %>
+      </div>
+      <div class="field">
+        <label for="password">Password (at least 10 characters)</label>
+        <input id="password" name="password" type="password" minlength="10" maxlength="200" autocomplete="new-password" required<%- bad('password') %>>
+        <%- err('password') %>
+      </div>
+      <div class="field">
+        <label for="city">City</label>
+        <input id="city" name="city" type="text" maxlength="60" autocomplete="address-level2" required value="<%= values.city || '' %>"<%- bad('city') %>>
+        <%- err('city') %>
+      </div>
+      <div class="hp" aria-hidden="true">
+        <label for="website">Leave this field empty</label>
+        <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+      <button class="btn lg block" type="submit">Create my business</button>
+      <p class="slate small">You will start with two example services and two areas to edit. Nothing reaches a customer until you approve it.</p>
+    </form>
+    <p class="small">Already signed up? <a href="/owner/login">Log in</a> · <a href="/">← Back to Liaisa</a></p>
+  </main>
+  <script src="<%= asset('/js/ui.js') %>" defer></script>
+</body>
+</html>

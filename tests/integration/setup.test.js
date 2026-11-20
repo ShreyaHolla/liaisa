@@ -47,7 +47,7 @@ test('saving applies to new enquiries everywhere: engine, enquiry form, owner pa
   assert.equal(cfg.services[0].price, 520);
   assert.equal(cfg.services[1].id, 'chaat_counter');
   assert.match((await o.get('/owner')).text, /Spice Route/);
-  const enquire = await request(ctx.app).get('/enquire');
+  const enquire = await request(ctx.app).get('/b/mehfil-kitchen/enquire');
   assert.match(enquire.text, /Spice Route/);
 });
 
@@ -126,7 +126,7 @@ test('a new quote uses the edited prices; a quote made before the edit keeps its
   assert.equal(edit.body.total, oldTotal);
   // A brand new enquiry is priced with the edited config.
   const e = ctx.repos.enquiries.create({ customerName: 'Tara', customerEmail: 't@example.test', preferredChannel: 'email', rawText: 'x', status: 'collecting' });
-  const done = await request(ctx.app).post(`/api/enquiries/${e.publicId}/form`).send({ service_id: 'veg_buffet', quantity: 40, event_date: '2026-12-15', location: 'Hebbal' });
+  const done = await request(ctx.app).post(`/b/mehfil-kitchen/api/enquiries/${e.publicId}/form`).send({ service_id: 'veg_buffet', quantity: 40, event_date: '2026-12-15', location: 'Hebbal' });
   assert.equal(done.body.outcome, 'ready');
   const est = ctx.repos.estimates.listByEnquiry(e.id)[0];
   // 40 x 520 = 20,800 + 800 travel = 21,600; tax 18% = 3,888

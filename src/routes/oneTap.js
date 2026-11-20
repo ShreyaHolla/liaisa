@@ -22,12 +22,13 @@ const PROBLEMS = {
   expired: [410, 'This link has expired', 'One-tap links last 24 hours. Review the quote in Liaisa instead.'],
   used: [409, 'This link was already used', 'Each link works once. Review the quote in Liaisa to see what happened.'],
   changed: [409, 'This quote has changed', 'The quote was edited, approved or declined since the email was sent. Review it in Liaisa.'],
+  missing: [404, 'We couldn’t find that quote', 'It may belong to a quote that no longer exists. Review your quotes in Liaisa instead.'],
   csrf: [403, 'Your confirmation didn’t go through', 'Go back to the email, tap the link again and confirm on the page.'],
 };
 
-export function oneTapRoutes({ repos, config, mailer }) {
+export function oneTapRoutes({ registry, config, mailer }) {
   const router = Router();
-  const deps = () => ({ repos, config, mailer });
+  const depsOf = (repos) => ({ repos, config, mailer });
   const secret = config.sessionSecret;
 
   router.use('/a', (req, res, next) => {
@@ -35,9 +36,9 @@ export function oneTapRoutes({ repos, config, mailer }) {
     next();
   }, quoteLimiter());
 
-  const problem = (res, key) => {
+  const problem = (res, key, repos = null) => {
     const [status, title, text] = PROBLEMS[key];
-    return res.status(status).render('pages/link-result', { biz: repos.businessSettings.get(), ok: false, title, text });
+    return res.status(status).render('pages/link-result', { biz: repos?.businessSettings.get() ?? { businessName: 'Liaisa' }, ok: false, title, text });
   };
   /** The link is checked without being spent. null = fine. */
   const check = (token) => {
@@ -50,10 +51,14 @@ export function oneTapRoutes({ repos, config, mailer }) {
   router.get('/a/:token', (req, res) => {
     const v = check(req.params.token);
     if (v === 'malformed' || v.fail) return problem(res, v.fail ?? v);
-    const { enquiryId, version, action, nonce } = v.payload;
-    if (repos.usedLinks.has(nonce)) return problem(res, 'used');
-    const model = enquiryDetail(deps(), enquiryId);
-    if (!model?.estimate || model.estimate.version !== version || !model.can.approve) return problem(res, 'changed');
+    const { businessId, enquiryId, version, action, nonce } = v.payload;
+    // The business comes from the signed payload, never from the URL: the link only ever opens that business's data.
+    const repos = registry.repos(businessId);
+    if (!repos) return problem(res, 'missing');
+    if (repos.usedLinks.has(nonce)) return problem(res, 'used', repos);
+    if (!repos.enquiries.get(enquiryId)) return problem(res, 'missing', repos);
+    const model = enquiryDetail(depsOf(repos), enquiryId);
+    if (!model?.estimate || model.estimate.version !== version || !model.can.approve) return problem(res, 'changed', repos);
     const csrf = randomBytes(24).toString('base64url');
     res.cookie(COOKIE, csrf, { httpOnly: true, sameSite: 'strict', secure: config.env === 'production', path: '/a', maxAge: 60 * 60 * 1000 });
     const symbol = repos.businessSettings.get()?.currencySymbol ?? '₹';
@@ -68,8 +73,12 @@ export function oneTapRoutes({ repos, config, mailer }) {
       const v = check(req.params.token);
       if (v === 'malformed' || v.fail) return problem(res, v.fail ?? v);
       if (!same(cookieOf(req), req.body?._csrf)) return problem(res, 'csrf');
-      const { enquiryId, version, action, nonce } = v.payload;
-      if (repos.usedLinks.has(nonce)) return problem(res, 'used');
+      const { businessId, enquiryId, version, action, nonce } = v.payload;
+      const repos = registry.repos(businessId);
+      if (!repos) return problem(res, 'missing');
+      const deps = () => depsOf(repos);
+      if (repos.usedLinks.has(nonce)) return problem(res, 'used', repos);
+      if (!repos.enquiries.get(enquiryId)) return problem(res, 'missing', repos);
       repos.usedLinks.add(nonce, new Date()); // spent before acting: a double tap or a replay can't act twice
       res.clearCookie(COOKIE, { path: '/a' });
       const biz = repos.businessSettings.get();
@@ -83,7 +92,8 @@ export function oneTapRoutes({ repos, config, mailer }) {
         declineEnquiry(deps(), enquiryId, { via: 'a one-tap email link' });
         return res.render('pages/link-result', { biz, ok: true, title: 'Declined', text: 'Nothing was sent to the customer.' });
       } catch (err) {
-        if (err instanceof ConflictError || err instanceof NotFoundError) return problem(res, 'changed');
+        if (err instanceof NotFoundError) return problem(res, 'missing', repos);
+        if (err instanceof ConflictError) return problem(res, 'changed', repos);
         throw err;
       }
     } catch (err) {

@@ -9,7 +9,7 @@ const PRICES = { AI_PRICE_INPUT_PER_MTOK: '1', AI_PRICE_OUTPUT_PER_MTOK: '5' };
 
 test('TC-LOG-01 each mock call writes one ai_calls row', async () => {
   const { app, repos } = setup({ env: PRICES, steps: scenarios.ready() });
-  await request(app).post('/api/enquiries').send(START);
+  await request(app).post('/b/mehfil-kitchen/api/enquiries').send(START);
   const e = newest(repos);
   const rows = repos.aiCalls.listByEnquiry(e.id);
   assert.equal(rows.length, 2);
@@ -28,7 +28,7 @@ test('TC-LOG-01 each mock call writes one ai_calls row', async () => {
 
 test('TC-LOG-01b a failed call is logged with ok=false and a short error', async () => {
   const { app, repos } = setup({ steps: [scenarios.api_error(), scenarios.api_error()] });
-  await request(app).post('/api/enquiries').send(START);
+  await request(app).post('/b/mehfil-kitchen/api/enquiries').send(START);
   const rows = repos.aiCalls.listByEnquiry(newest(repos).id);
   assert.equal(rows.length, 2);
   assert.ok(rows.every((r) => r.ok === false && r.error === '500'));
@@ -48,7 +48,7 @@ test('TC-LOG-03 ai_calls and console output never contain the API key, email or 
   for (const m of ['log', 'info', 'warn', 'error']) t.mock.method(console, m, (...a) => logged.push(a.join(' ')));
   const key = 'sk-ant-test-secret-123';
   const { app, repos } = setup({ env: { ANTHROPIC_API_KEY: key }, steps: [scenarios.api_error(), scenarios.ready()] });
-  await request(app).post('/api/enquiries').send({ ...START, channel: 'whatsapp', phone: '98450 12345' });
+  await request(app).post('/b/mehfil-kitchen/api/enquiries').send({ ...START, channel: 'whatsapp', phone: '98450 12345' });
   const dump = JSON.stringify(repos.aiCalls.all()) + logged.join('\n');
   for (const secret of [key, 'priya@example.test', '9845012345', 'Priya']) {
     assert.ok(!dump.includes(secret), `log leaks ${secret}`);

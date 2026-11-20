@@ -7,7 +7,7 @@ import { calculateEstimate } from '../../src/services/pricing/calculateEstimate.
 import { DEMO_PRICING_CONFIG } from '../../src/seed.js';
 import { runTurn } from '../../src/services/agent/runTurn.js';
 
-const post = (app, body = START) => request(app).post('/api/enquiries').send(body);
+const post = (app, body = START) => request(app).post('/b/mehfil-kitchen/api/enquiries').send(body);
 
 test('TC-AGT-01 ready on first turn: server-priced draft, no price shown, 2 requests', async () => {
   const { app, repos, ai } = setup({ steps: scenarios.ready() });
@@ -44,7 +44,7 @@ test('TC-AGT-02 needs_info: question shown, enquiry stays collecting, state save
 test('TC-AGT-03 reply after needs_info resumes from saved state and ends awaiting_approval', async () => {
   const { app, repos, ai } = setup({ steps: [scenarios.needs_info(), scenarios.ready()] });
   const first = await post(app);
-  const res = await request(app).post(`/api/enquiries/${first.body.publicId}/reply`).send({ answer: '13 Dec, Koramangala' });
+  const res = await request(app).post(`/b/mehfil-kitchen/api/enquiries/${first.body.publicId}/reply`).send({ answer: '13 Dec, Koramangala' });
   assert.equal(res.status, 200);
   assert.equal(res.body.outcome, 'ready');
   assert.equal(newest(repos).status, 'awaiting_approval');
@@ -96,7 +96,7 @@ test('TC-AGT-07 requests used reaches 4: no 5th call, fallback', async () => {
 test('TC-AGT-08 a third question is never asked: max 2, then fallback', async () => {
   const { app, repos } = setup({ steps: [scenarios.needs_info(), scenarios.needs_info(), scenarios.needs_info()] });
   const first = await post(app);
-  const url = `/api/enquiries/${first.body.publicId}/reply`;
+  const url = `/b/mehfil-kitchen/api/enquiries/${first.body.publicId}/reply`;
   assert.equal((await request(app).post(url).send({ answer: 'soon' })).body.outcome, 'needs_info');
   const third = await request(app).post(url).send({ answer: 'not sure' });
   assert.equal(third.body.outcome, 'fallback');
@@ -173,7 +173,7 @@ test('TC-AGT-15 requests_used is incremented before the call', async () => {
 
 test('form-encoded post from the page without JS renders HTML and never shows a price', async () => {
   const { app } = setup({ steps: scenarios.ready() });
-  const res = await request(app).post('/api/enquiries').set('Accept', 'text/html').type('form').send(START);
+  const res = await request(app).post('/b/mehfil-kitchen/api/enquiries').set('Accept', 'text/html').type('form').send(START);
   assert.equal(res.status, 201);
   assert.match(res.text, /Thanks, Priya\. Your enquiry is with Mehfil Kitchen\./);
   assert.match(res.text, /Veg buffet/);
@@ -182,12 +182,12 @@ test('form-encoded post from the page without JS renders HTML and never shows a 
 
 test('GET /enquire renders step 1; home links to it', async () => {
   const { app } = setup();
-  const page = await request(app).get('/enquire');
+  const page = await request(app).get('/b/mehfil-kitchen/enquire');
   assert.equal(page.status, 200);
   assert.match(page.text, /Tell us what you need/);
   assert.match(page.text, /Send enquiry/);
   const home = await request(app).get('/');
-  assert.match(home.text, /href="\/enquire"[^>]*>Try the demo enquiry/);
+  assert.match(home.text, /href="\/b\/mehfil-kitchen\/enquire"[^>]*>Try the demo enquiry/);
 });
 
 test('auto mock (dev default) handles a complete message end to end', async () => {
@@ -204,7 +204,7 @@ test('M6b merge across turns: turn 2 keeps turn 1 details, snaps the area, and t
   const turn2 = [step.calc(REQ_READY), step.finish({ status: 'ready', requirements: partial, missing_fields: [], summary_for_owner: 'Veg buffet for 40.' })];
   const { app, repos, ai } = setup({ steps: [scenarios.needs_info(), turn2] });
   const first = await post(app);
-  const res = await request(app).post(`/api/enquiries/${first.body.publicId}/reply`).send({ answer: '13 Dec, Kormangala' });
+  const res = await request(app).post(`/b/mehfil-kitchen/api/enquiries/${first.body.publicId}/reply`).send({ answer: '13 Dec, Kormangala' });
   assert.equal(res.body.outcome, 'ready');
   const e = newest(repos);
   assert.equal(e.requirementsJson.service_id, 'veg_buffet');
@@ -227,10 +227,10 @@ test('M6b the prompt shows dates as "Sat 5 Dec" and the done page does too', asy
   });
   const b = setup({ steps: [withDate, scenarios.ready()] });
   const f = await post(b.app);
-  await request(b.app).post(`/api/enquiries/${f.body.publicId}/reply`).send({ answer: 'Koramangala' });
+  await request(b.app).post(`/b/mehfil-kitchen/api/enquiries/${f.body.publicId}/reply`).send({ answer: 'Koramangala' });
   assert.match(lastUser(b.ai, 1), /"event_date_display":"Sat 5 Dec"/);
 
-  const html = await request(app).post(`/api/enquiries/${first.body.publicId}/reply`).set('Accept', 'text/html').type('form').send({ answer: '13 Dec' });
+  const html = await request(app).post(`/b/mehfil-kitchen/api/enquiries/${first.body.publicId}/reply`).set('Accept', 'text/html').type('form').send({ answer: '13 Dec' });
   assert.match(html.text, /Veg buffet · 40 guests · Sun 13 Dec · Koramangala/);
 });
 

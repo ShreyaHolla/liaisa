@@ -51,7 +51,7 @@ test('the validator strips links and currency amounts', () => {
   const cases = [
     ['Hi Priya, see https://evil.example/x?a=1 now', 'link'],
     ['Hi Priya, visit www.example.com today', 'link'],
-    ['Hi Priya, go to liaisa.co.in/enquire', 'link'],
+    ['Hi Priya, go to liaisa.co.in/b/mehfil-kitchen/enquire', 'link'],
     ['Hi Priya, it is ₹1,200 only', 'amount'],
     ['Hi Priya, it is Rs. 500 only', 'amount'],
     ['Hi Priya, it is INR 500 only', 'amount'],

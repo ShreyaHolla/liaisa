@@ -78,6 +78,7 @@ export function createRegistry({ maxBusinesses = 50 } = {}) {
 
     /** Adopt a repo set built elsewhere (tests that build repos by hand) as a business. */
     adopt(repos) {
+      repos.global ??= global;
       repoSets.set(repos.business.id, repos);
       nextBusinessId = Math.max(nextBusinessId, repos.business.id + 1);
       return repos;

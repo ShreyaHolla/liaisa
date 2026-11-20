@@ -57,7 +57,7 @@ test('the Follow up panel shows a drafted reminder: name, service, date, quote l
   assert.match(page.text, /This is reminder 1 of 2, by email\./);
   const token = ctx.repos.estimates.listByEnquiry(ctx.rohan.id)[0].quoteToken;
   assert.match(page.text, /Hi Rohan, just checking in on your non-veg buffet quote from Mehfil Kitchen for Wed 16 Dec\./);
-  assert.ok(page.text.includes(`https://liaisa.co.in/q/${token}`));
+  assert.ok(page.text.includes(`https://liaisa.co.in/b/mehfil-kitchen/q/${token}`));
   assert.match(page.text, /Send reminder/);
   assert.match(page.text, /Mark as done/);
   // Not on a draft quote.
@@ -111,7 +111,7 @@ test('WhatsApp customers: the button opens wa.me with the message filled in; not
   assert.match(res.headers.location, /^https:\/\/wa\.me\/919800000005\?text=Hi%20Fatima%2C/);
   const text = decodeURIComponent(res.headers.location.split('?text=')[1]);
   assert.match(text, /^Hi Fatima, just checking in on your non-veg buffet quote from Mehfil Kitchen for Sat 5 Dec\. It’s valid until /);
-  assert.ok(text.includes('https://liaisa.co.in/q/'));
+  assert.ok(text.includes('https://liaisa.co.in/b/mehfil-kitchen/q/'));
   assert.equal(ctx.mailer.sent.length, before);
   const share = ctx.repos.whatsappShares.listByEnquiry(ctx.fatima.id).find((s) => s.type === 'followup');
   assert.ok(share.followupId);
@@ -126,14 +126,14 @@ test('no reminder after the customer accepts, declines or asks a question', asyn
   const token = (e) => ctx.repos.estimates.listByEnquiry(e.id)[0].quoteToken;
   const json = { Accept: 'application/json' };
   const ann = ctx.rohan; // the customer who asks a question
-  await request(ctx.app).post(`/q/${token(ann)}/question`).set(json).send({ message: 'Can you do Jain food?' });
+  await request(ctx.app).post(`/b/mehfil-kitchen/q/${token(ann)}/question`).set(json).send({ message: 'Can you do Jain food?' });
   assert.equal((await ctx.o.postJson(`/owner/enquiries/${ann.id}/followup/send`)).status, 409);
   const page = await ctx.o.get(`/owner/enquiries/${ann.id}`);
   assert.ok(!page.text.includes('Follow up</h2>'));
   assert.match(page.text, /Customer question/);
   assert.ok(!(await ctx.o.get('/owner')).text.match(/Follow-up due[\s\S]*Rohan Iyer[\s\S]*Sent quotes/));
 
-  await request(ctx.app).post(`/q/${token(ctx.fatima)}/accept`).set(json);
+  await request(ctx.app).post(`/b/mehfil-kitchen/q/${token(ctx.fatima)}/accept`).set(json);
   assert.equal((await ctx.o.postJson(`/owner/enquiries/${ctx.fatima.id}/followup/send`)).status, 409);
   assert.match((await ctx.o.get('/owner')).text, /Follow-up due \(0\)/);
   assert.equal(reminderMails(ctx).length, 0);

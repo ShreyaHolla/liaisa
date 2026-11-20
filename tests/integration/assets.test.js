@@ -23,7 +23,7 @@ async function pages() {
   const token = estimateOf(ctx.repos, rohan).quoteToken;
   const kavita = byName(ctx.repos, 'Kavita Reddy');
   const html = {};
-  for (const [name, p, owner] of [['home', '/', false], ['enquire', '/enquire', false], ['login', '/owner/login', false], ['quote', `/q/${token}`, false],
+  for (const [name, p, owner] of [['home', '/', false], ['enquire', '/b/mehfil-kitchen/enquire', false], ['login', '/owner/login', false], ['quote', `/b/mehfil-kitchen/q/${token}`, false],
     ['owner', '/owner', true], ['enquiry', `/owner/enquiries/${kavita.id}`, true], ['setup', '/owner/setup', true], ['clients', '/owner/clients?tab=find', true]]) {
     const res = owner ? await o.get(p) : await request(ctx.app).get(p);
     assert.equal(res.status, 200, p);

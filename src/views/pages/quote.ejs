@@ -29,7 +29,7 @@
 
         <details class="edit edit--bar" id="ask" <%= errors.message ? 'open' : '' %>>
           <summary>Ask a question</summary>
-          <form method="post" action="/q/<%= token %>/question">
+          <form method="post" action="<%= base %>/q/<%= token %>/question">
             <div class="field">
               <label for="message">Your question</label>
               <textarea id="message" name="message" rows="3" maxlength="1000" required <%= errors.message ? 'aria-invalid="true" aria-describedby="message-error"' : '' %>><%= values.message || '' %></textarea>
@@ -40,14 +40,14 @@
         </details>
         <details class="edit edit--bar" id="decline">
           <summary>Decline this quote</summary>
-          <form method="post" action="/q/<%= token %>/decline">
+          <form method="post" action="<%= base %>/q/<%= token %>/decline">
             <label class="check"><input type="checkbox" name="doNotContact" value="on"> Please don’t contact me again about other work</label>
             <button class="btn danger" type="submit">Decline</button>
           </form>
         </details>
 
         <div class="action-bar action-bar--public">
-          <form method="post" action="/q/<%= token %>/accept">
+          <form method="post" action="<%= base %>/q/<%= token %>/accept">
             <button class="btn lg" type="submit">Accept quote</button>
           </form>
           <a class="btn secondary" href="#ask" data-open="ask">Ask a question</a>

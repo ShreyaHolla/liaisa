@@ -5,7 +5,7 @@ import { formatDate } from '../../util/formatDate.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-export const quoteUrl = (config, token) => `${config.baseUrl.replace(/\/$/, '')}/q/${token}`;
+export const quoteUrl = (config, token, slug) => `${config.baseUrl.replace(/\/$/, '')}/b/${slug}/q/${token}`;
 export const ownerUrl = (config, enquiryId) => `${config.baseUrl.replace(/\/$/, '')}/owner/enquiries/${enquiryId}`;
 export const firstName = (enquiry) => enquiry.customerName.split(' ')[0];
 
