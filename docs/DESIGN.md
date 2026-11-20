@@ -354,6 +354,7 @@ Voice: plain, warm, brief. Sentence case. Active voice. Errors say what happened
 | `collecting` | Asking the customer | In progress |
 | `needs_owner` | Needs your review | Needs you |
 | `awaiting_approval` | Needs your approval | Needs you |
+| estimate `approved` (not yet sent) | Approved, not sent yet | Needs you |
 | `quoted` | Quote sent | In progress |
 | `followed_up` | Reminder sent | In progress |
 | `won` | Accepted | Done |

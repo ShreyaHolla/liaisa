@@ -138,6 +138,7 @@ Payments, invoicing, calendar booking, multiple businesses or users, AI-written 
   - **Email customers:** reminders are sent automatically.
   - **WhatsApp customers:** the schedule is the same, but a due reminder moves to status `awaiting_owner` and appears at the top of the dashboard as **Reminder due → Send on WhatsApp** (one tap, prefilled). The owner also gets one short email a day listing the WhatsApp reminders due. This keeps WhatsApp follow-ups free (§13).
 - Runner: an in-process job checks every 5 minutes for due follow-ups; the protected endpoint `POST /owner/followups/run` triggers it manually (for the demo and as a fallback if the host stops background timers).
+- **Paused by a question:** there's no `paused` status. The runner skips an enquiry whose latest customer response is a question.
 - **AC:** follow-ups stop on accept, question or decline; each follow-up is sent at most once (idempotent, even when two runners overlap); every send is recorded.
 
 ### F9 — Owner dashboard
@@ -373,6 +374,7 @@ CREATE TABLE estimates (
   currency CHAR(3) NOT NULL,
   warnings_json JSON,
   revision_reason VARCHAR(300),
+  note_for_customer VARCHAR(500),                  -- owner note shown on the quote (M7)
   status ENUM('draft','approved','sent','approved_send_failed','superseded') NOT NULL,
   approved_at DATETIME NULL,
   quote_token CHAR(43) UNIQUE,
