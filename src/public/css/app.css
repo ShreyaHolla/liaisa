@@ -290,3 +290,16 @@ details.edit summary { cursor: pointer; color: var(--plum); font-weight: 600; mi
 /* Motion: only what answers an action; off for reduced motion */
 @media (prefers-reduced-motion: no-preference) { dialog[open] { animation: fade 140ms ease-out; } @keyframes fade { from { opacity: 0; } } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }
+
+/* Share your enquiry link */
+.share { display: grid; gap: var(--s-4); margin-top: var(--s-5); }
+.share h2 { margin-bottom: var(--s-2); }
+.share__url { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 16px; }
+.share [data-copy] { display: none; }
+.js .share [data-copy] { display: inline-flex; }
+.share__qr { display: grid; justify-items: start; gap: var(--s-3); }
+.qr { background: var(--white); border: 1px solid var(--line); border-radius: var(--r-sm); padding: var(--s-2); line-height: 0; }
+.qr svg { width: 176px; height: 176px; display: block; }
+.share--hero { border: 2px solid var(--plum); background: var(--tint-progress-bg); margin-top: 0; margin-bottom: var(--s-5); }
+.share__lead { font-family: var(--serif); font-size: var(--t-md); color: var(--plum); margin-bottom: var(--s-3); }
+@media (min-width: 40rem) { .share { grid-template-columns: 1fr auto; align-items: start; } .share--hero .qr svg { width: 208px; height: 208px; } }

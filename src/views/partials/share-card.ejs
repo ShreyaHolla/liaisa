@@ -1,0 +1,23 @@
+<section class="card share<%= prominent ? ' share--hero' : '' %>" aria-labelledby="share-h">
+  <div class="share__main">
+    <h2 id="share-h">Share your enquiry link</h2>
+    <% if (prominent) { %>
+      <p class="share__lead">No enquiries yet. Share your link to get the first one.</p>
+    <% } else { %>
+      <p class="slate small">Customers use this link to tell you what they need and get a quote.</p>
+    <% } %>
+    <label for="share-url">Your enquiry link</label>
+    <input id="share-url" class="share__url" type="text" readonly value="<%= share.url %>">
+    <div class="actions">
+      <button class="btn" type="button" data-copy="share-url">Copy link</button>
+      <a class="btn secondary" href="<%= share.waLink %>" target="_blank" rel="noopener noreferrer">Share on WhatsApp</a>
+    </div>
+    <p class="slate small" role="status" data-copy-status hidden></p>
+  </div>
+  <% if (share.qrSvg) { %>
+    <div class="share__qr">
+      <div class="qr" role="img" aria-label="QR code for <%= share.url %>"><%- share.qrSvg %></div>
+      <a class="btn secondary" href="/owner/enquiry-qr.svg" download="enquiry-qr.svg">Download QR</a>
+    </div>
+  <% } %>
+</section>

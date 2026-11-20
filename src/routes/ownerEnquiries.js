@@ -9,6 +9,7 @@ import { dashboardSummary, enquiryDetail, whatOf } from '../services/owner/dashb
 import { sendReminder, markFollowupDone } from '../services/followups/reminders.js';
 import { cleanQuotes, approveClean, limitOf } from '../services/quotes/clean.js';
 import { quoteUrl, describeLines } from '../services/quotes/messages.js';
+import { makeShare, downloadSvg } from '../services/share.js';
 import { inr, timeAgo, unitLabel } from '../util/format.js';
 import { formatDate, spokenDate } from '../util/formatDate.js';
 
@@ -45,6 +46,7 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
   const router = Router();
   const deps = () => ({ repos, config, mailer });
   const businessName = () => repos.businessSettings.get()?.businessName ?? 'Liaisa';
+  const getShare = makeShare(config);
   const money = (n) => inr(n, repos.businessSettings.get()?.currencySymbol ?? '₹'); // symbol is display only
 
   const notice = (req) => {
@@ -85,15 +87,25 @@ export function ownerEnquiryRoutes({ repos, config, mailer }) {
   const detailUrl = (req) => `/owner/enquiries/${req.enquiryId}`;
 
   // ---- Dashboard -------------------------------------------------------------------------
-  router.get('/', (req, res) => {
+  // The QR as a file to print or share (made here, no external service).
+  router.get('/enquiry-qr.svg', wrap(async (req, res) => {
+    const { qrSvg } = await getShare();
+    if (!qrSvg) return notFound(req, res);
+    res.set({ 'Content-Type': 'image/svg+xml; charset=utf-8', 'Content-Disposition': 'attachment; filename="enquiry-qr.svg"', 'Cache-Control': 'private, max-age=3600' });
+    return res.send(downloadSvg(qrSvg));
+  }));
+
+  router.get('/', wrap(async (req, res) => {
     const summary = dashboardSummary(deps());
+    const share = await getShare();
     const pending = summary.needsYou.filter((n) => ['approval', 'review'].includes(n.kind));
     res.render('pages/owner', {
       businessName: businessName(), csrfToken: res.locals.csrfToken, summary, inr: money, notice: notice(req), formatDate, spokenDate,
       baseUrl: config.baseUrl, active: 'approvals', pending: pending.length, approvals: pending,
       attention: summary.needsYou.filter((n) => !['approval', 'review'].includes(n.kind)),
+      share, noEnquiries: summary.all.length === 0,
     });
-  });
+  }));
 
   // ---- Follow-ups page (tab) --------------------------------------------------------------------
   router.get('/follow-ups', (req, res) => {

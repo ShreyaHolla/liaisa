@@ -5,6 +5,7 @@ import { ValidationError } from '../errors.js';
 import { makeSetupSchema, MAX_SERVICES, MAX_AREAS } from '../services/setup/schema.js';
 import { currentSetup, saveSetup, resetToDemo } from '../services/setup/businessSetup.js';
 import { flatErrors } from '../services/quotes/schema.js';
+import { makeShare } from '../services/share.js';
 
 const NOTICES = {
   saved: ['ok', 'Saved. New enquiries will use these details. Quotes already made keep their numbers.'],
@@ -37,9 +38,11 @@ export function parseSetupBody(body) {
 export function ownerSetupRoutes({ repos, config }) {
   const router = Router();
   const schema = makeSetupSchema(config.whatsappCountryCode);
+  const getShare = makeShare(config);
   const businessName = () => repos.businessSettings.get()?.businessName ?? 'Liaisa';
 
-  function render(req, res, status, values, errors = {}) {
+  async function render(req, res, status, values, errors = {}) {
+    const share = await getShare();
     const blanks = (list, max, make) => [...list, ...Array.from({ length: Math.max(0, Math.min(3, max - list.length)) }, make)];
     const view = {
       ...values,
@@ -48,23 +51,23 @@ export function ownerSetupRoutes({ repos, config }) {
     };
     const n = typeof req.query.n === 'string' && Object.hasOwn(NOTICES, req.query.n) ? NOTICES[req.query.n] : null;
     res.status(status).render('pages/owner-setup', {
-      businessName: businessName(), csrfToken: res.locals.csrfToken, v: view, errors, notice: n, active: 'setup',
+      businessName: businessName(), csrfToken: res.locals.csrfToken, v: view, errors, notice: n, active: 'setup', share, noEnquiries: repos.enquiries.list().length === 0,
       limits: { services: MAX_SERVICES, areas: MAX_AREAS },
     });
   }
 
-  router.get('/setup', (req, res) => render(req, res, 200, currentSetup(repos)));
+  router.get('/setup', (req, res, next) => render(req, res, 200, currentSetup(repos)).catch(next));
 
-  router.post('/setup', (req, res, next) => {
+  router.post('/setup', async (req, res, next) => {
     try {
       const raw = parseSetupBody(req.body ?? {});
       const parsed = schema.safeParse(raw);
-      if (!parsed.success) return render(req, res, 400, raw, flatErrors(parsed.error));
+      if (!parsed.success) return await render(req, res, 400, raw, flatErrors(parsed.error));
       try {
         saveSetup(repos, parsed.data, config.whatsappCountryCode);
       } catch (err) {
         if (!(err instanceof ValidationError)) throw err;
-        return render(req, res, 400, raw, { _form: err.message });
+        return await render(req, res, 400, raw, { _form: err.message });
       }
       return res.redirect(303, '/owner/setup?n=saved');
     } catch (err) {

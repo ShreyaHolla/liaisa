@@ -10,6 +10,7 @@
   <% if (notice) { %><p class="banner tone-done" role="status"><%= notice[1] %></p><% } %>
   <% if (Object.keys(errors).length) { %><p class="banner tone-problem" role="alert">Some details need another look. They are marked below.</p><% } %>
   <% if (errors._form) { %><p class="banner tone-problem" role="alert"><%= errors._form %></p><% } %>
+  <%- include('../partials/share-card', { share: share, prominent: noEnquiries }) %>
 
   <form method="post" action="/owner/setup" novalidate>
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -155,4 +156,4 @@
     <button class="btn secondary" type="submit" data-no-busy>Log out</button>
   </form>
 </div>
-<%- include('../partials/owner-close') %>
+<%- include('../partials/owner-close', { scripts: ['/js/share.js'] }) %>

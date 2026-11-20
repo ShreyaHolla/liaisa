@@ -24,6 +24,8 @@
     </div>
   <% } %>
 
+  <% if (noEnquiries) { %><%- include('../partials/share-card', { share: share, prominent: true }) %><% } %>
+
   <section class="section" aria-labelledby="wait-h">
     <h2 id="wait-h">Waiting for you (<%= approvals.length %>)</h2>
     <% if (approvals.length === 0) { %>
@@ -108,6 +110,8 @@
     <div class="stat"><strong><%= summary.followUps.length %></strong><span>Follow-ups due</span></div>
   </div>
 
+  <% if (!noEnquiries) { %><%- include('../partials/share-card', { share: share, prominent: false }) %><% } %>
+
   <section class="section" aria-labelledby="fu-h">
     <h2 id="fu-h">Follow-up due (<%= summary.followUps.length %>)</h2>
     <% if (summary.followUps.length === 0) { %>
@@ -155,4 +159,4 @@
     <% } %>
   </section>
 </div>
-<%- include('../partials/owner-close', { scripts: ['/js/briefing.js'] }) %>
+<%- include('../partials/owner-close', { scripts: ['/js/briefing.js', '/js/share.js'] }) %>
